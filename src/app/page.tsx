@@ -20,7 +20,7 @@ export default function Home() {
 
   return (
     <main className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Inventory</h1>
+      <h1 className="text-2xl font-bold mb-4">InBrentory</h1>
       <ul>
         {items.map((item) => (
           <li key={item.id} className="mb-2 border-b pb-1">
