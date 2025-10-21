@@ -10,7 +10,7 @@ generator client {
 model Item {
   id          Int      @id @default(autoincrement())
   name        String
-  description String?
+  description String @db.MediumText
   cost_basis  Int?
   transaction_price  Int?
   transaction_id  Int?
@@ -18,9 +18,9 @@ model Item {
   discounted_list_price Int?
   has_printed_tag Boolean @default(false)
   store_credit_amount_applied Int?
-  keywords   String?
+  keywords   String? @db.Text
   categories String?
-  measurements String?
+  measurements String? @db.Text
   quantity    Int       @default(1)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
