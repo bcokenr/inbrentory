@@ -1,27 +1,41 @@
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Item {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String @db.MediumText
-  cost_basis  Int?
-  transaction_price  Int?
-  transaction_id  Int?
-  list_price Int
-  discounted_list_price Int?
-  has_printed_tag Boolean @default(false)
-  store_credit_amount_applied Int?
-  keywords   String? @db.Text
-  categories String?
-  measurements String? @db.Text
-  quantity    Int       @default(1)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                       String       @id @default(uuid())
+  name                     String
+  description              String?
+  listPrice                Decimal
+  discountedListPrice      Decimal?
+  transactionPrice         Decimal?
+  costBasis                Decimal?
+  hasPrintedTag            Boolean      @default(false)
+  storeCreditAmountApplied Decimal?
+  keywords                 String?
+  measurements             String?
+  quantity                 Int          @default(1)
+  transactionId            String?
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+  transaction              Transaction? @relation(fields: [transactionId], references: [id])
+  categories               Category[]   @relation("ItemCategories")
+}
+
+model Transaction {
+  id    String   @id @default(uuid())
+  total Decimal
+  date  DateTime @default(now())
+  items Item[]
+}
+
+model Category {
+  id    String @id @default(uuid())
+  name  String @unique
+  items Item[] @relation("ItemCategories")
 }

@@ -1,58 +1,122 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-    // Clear existing data (optional)
-    await prisma.item.deleteMany();
+    console.log('🌱 Seeding database...');
 
-    // Seed sample items
-    await prisma.item.createMany({
+    // Clear old data
+    await prisma.transaction.deleteMany();
+    await prisma.item.deleteMany();
+    await prisma.category.deleteMany();
+
+    // Create categories
+    const categories = await prisma.category.createMany({
         data: [
-            {
-                id: 1,
-                quantity: 1,
-                name: "Gunne Sax Womens Black and Brown Skirt",
-                cost_basis: 2000,
-                transaction_price: 11000,
-                transaction_id: 1,
-                list_price: 11000,
-                description: "gunne sax maxi skirt - beautiful moody witchy gunne sax maxi prairie skirt!! black with floral and micro polka dot prints, lace trim, and velvet lace up faux corset waist detail. zips up the back. 100% cotton. true vintage collectors piece 🖤 best fit xxs-xs",
-                keywords: "60s 70s prairie cottage the love witch practical magic stevie nicks dark academia boho bohemian goth gothic southern gothic Ethel Cain country Americana dark romantic edwardian victorian #gunnesax  #truevintage  #cottagecore  #witchy  #boho",
-                categories: "dresses",
-                measurements: "23”-24” waist, open hip, 44” length",
-                // image_urls: ["/items/dress1.jpg", "/items/dress2.jpg", "/items/dress3.jpg", "/items/dress4.jpg", "/items/dress5.jpg", "/items/dress6.jpg"],
-                has_printed_tag: false,
-            },
-            {
-                id: 2,
-                quantity: 1,
-                name: "Mens multi Jumper",
-                cost_basis: 700,
-                transaction_price: 4000,
-                transaction_id: 1,
-                list_price: 4000,
-                description: "90s preppy golf pullover - super fun 80s/90s golf knit pullover. white with navy and teal striping/graphic. soft, textured, really cool for a looser summer transitioning to fall piece. brand is “QUANTUM! sportswear ltd” material is acrylic. small hole notes in photos, only visible if pulled tight. ",
-                keywords: "80s 90s vintage golf sporty retro collegiate midweight athletic athleticwear sportswear coastal grandpa dadcore us open heritage preppy normcore ivy league country club golfcore #90s  #heritage  #preppy  #athleticwear  #normcore ",
-                categories: "tops",
-                measurements: "8”-52” bust, 40”-52” waist, 27” length, 21” sleeve",
-                // image_urls: ["/items/golf1.jpg", "/items/golf2.jpg"],
-                has_printed_tag: true,
-            },
-            {
-                id: 3,
-                quantity: 1,
-                name: "City Triangles Womens Burgundy and Red Dress",
-                cost_basis: 700,
-                list_price: 3800,
-                description: "90s goth asymmetrical dress - super hot little 90s glitter goth dress! asymmetrical one shoulder strap, bodycon fit with a side scrunch, high low hem cut. black with red glitter sparkle micro wavey dot print. city triangles brand, tag size small, made in USA, 77% nylon 17% metallic 6% spandex. a lot of stretch.",
-                keywords: "90s y2k 2000s mall goth gothic vampy vampire jessica rabbit romantic dark fairy rave raver club cocktail homecoming prom formal party date night #90s  #y2k  #citytriangles  #goth  #vampy",
-                categories: "tops",
-                measurements: "30”-36” bust, 24”-29” waist, 30”-38” hip, 54” length",
-                // image_urls: ["/items/burgundy1.jpg", "/items/burgundy2.jpg"],
-                has_printed_tag: false,
-            }
+            { name: "Jewelry" },
+            { name: "Lingerie" },
+            { name: "Outerwear" },
+            { name: "Tops" },
+            { name: "Dresses" },
+            { name: "Purses" },
+            { name: "Bottoms" },
+            { name: "Accessories" },
         ],
+        skipDuplicates: true,
+    });
+
+    console.log(`✅ Created ${categories.count} categories`);
+
+    // Helper to find category by name
+    const getCategory = async (name: string) =>
+        prisma.category.findUnique({ where: { name } });
+
+    // Seed sample items with relations
+    const dressesCategory = await getCategory("Dresses");
+    const topsCategory = await getCategory("Tops");
+    const outerwearCategory = await getCategory("Outerwear");
+    const accessoriesCategory = await getCategory("Accessories");
+
+    await prisma.item.create({
+        data: {
+            quantity: 1,
+            name: "Gunne Sax Womens Black and Brown Skirt",
+            costBasis: new Prisma.Decimal(20),
+            listPrice: new Prisma.Decimal(110),
+            description:
+                "Gunne Sax maxi skirt - beautiful moody witchy vintage piece with floral and lace trim.",
+            keywords:
+                "60s 70s prairie cottage witchy goth vintage #gunnesax #boho",
+            categories: {
+                connect: { id: dressesCategory?.id },
+            },
+            measurements: "23”-24” waist, open hip, 44” length",
+            hasPrintedTag: false,
+        },
+    });
+
+        await prisma.item.create({
+        data: {
+            quantity: 1,
+            name: "City Triangles Womens Burgundy and Red Dress",
+            costBasis: new Prisma.Decimal(7),
+            listPrice: new Prisma.Decimal(38),
+            description:
+                "90s goth asymmetrical dress - super hot little 90s glitter goth dress! asymmetrical one shoulder strap, bodycon fit with a side scrunch, high low hem cut. black with red glitter sparkle micro wavey dot print. city triangles brand, tag size small, made in USA, 77% nylon 17% metallic 6% spandex. a lot of stretch.",
+            keywords:
+                "90s y2k 2000s mall goth gothic vampy vampire jessica rabbit romantic dark fairy rave raver club cocktail homecoming prom formal party date night #90s  #y2k  #citytriangles  #goth  #vampy",
+            categories: {
+                connect: { id: dressesCategory?.id },
+            },
+            measurements: "30”-36” bust, 24”-29” waist, 30”-38” hip, 54” length",
+            hasPrintedTag: false,
+        },
+    });
+
+    await prisma.item.create({
+        data: {
+            quantity: 1,
+            name: "Mens Multi Jumper",
+            costBasis: new Prisma.Decimal(7),
+            listPrice: new Prisma.Decimal(40),
+            description:
+                "90s preppy golf pullover - white with navy and teal striping.",
+            keywords: "90s vintage golf sporty retro preppy #normcore",
+            categories: {
+                connect: { id: topsCategory?.id },
+            },
+            measurements: "48” bust, 40”-52” waist, 27” length, 21” sleeve",
+            hasPrintedTag: true,
+        },
+    });
+
+    // Create a transaction with related items
+    await prisma.transaction.create({
+        data: {
+            total: new Prisma.Decimal(150),
+            items: {
+                create: [
+                    {
+                        name: "Vintage Leather Jacket",
+                        description: "Classic brown leather with soft lining.",
+                        listPrice: new Prisma.Decimal(120),
+                        costBasis: new Prisma.Decimal(60),
+                        categories: {
+                            connect: { id: outerwearCategory?.id },
+                        },
+                    },
+                    {
+                        name: "Retro Sunglasses",
+                        description: "1960s style sunglasses, great condition.",
+                        listPrice: new Prisma.Decimal(30),
+                        costBasis: new Prisma.Decimal(10),
+                        categories: {
+                            connect: { id: accessoriesCategory?.id },
+                        },
+                    },
+                ],
+            },
+        },
     });
 
     console.log('✅ Database seeded successfully');
