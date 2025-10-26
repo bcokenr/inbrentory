@@ -18,7 +18,7 @@ export default function Home() {
       <ul>
         {items.map((item) => (
           <li key={item.id} className="mb-2 border-b pb-1">
-            {item.name} - ${item.listPrice} ({item.quantity})
+            {item.name} - ${item.listPrice.toString()} ({item.quantity})
           </li>
         ))}
       </ul>

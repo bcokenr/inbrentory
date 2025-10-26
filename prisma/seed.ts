@@ -10,26 +10,33 @@ async function main() {
     await prisma.item.deleteMany();
     await prisma.category.deleteMany();
 
-    // Create categories
-    const categories = await prisma.category.createMany({
-        data: [
-            { name: "Jewelry" },
-            { name: "Lingerie" },
-            { name: "Outerwear" },
-            { name: "Tops" },
-            { name: "Dresses" },
-            { name: "Purses" },
-            { name: "Bottoms" },
-            { name: "Accessories" },
-        ],
-        skipDuplicates: true,
-    });
+    // --- Create Categories ---
+  const categoryNames = [
+    'Jewelry',
+    'Lingerie',
+    'Outerwear',
+    'Tops',
+    'Dresses',
+    'Purses',
+    'Bottoms',
+    'Accessories',
+  ];
 
-    console.log(`✅ Created ${categories.count} categories`);
+  const categories = await Promise.all(
+    categoryNames.map((name) =>
+      prisma.category.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      })
+    )
+  );
+
+    console.log(`✅ Created or found ${categories.length} categories.`);
 
     // Helper to find category by name
-    const getCategory = async (name: string) =>
-        prisma.category.findUnique({ where: { name } });
+    const getCategory = (name: string) =>
+    categories.find((c) => c.name === name)!;
 
     // Seed sample items with relations
     const dressesCategory = await getCategory("Dresses");
