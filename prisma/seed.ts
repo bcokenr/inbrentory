@@ -1,4 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
@@ -11,32 +12,32 @@ async function main() {
     await prisma.category.deleteMany();
 
     // --- Create Categories ---
-  const categoryNames = [
-    'Jewelry',
-    'Lingerie',
-    'Outerwear',
-    'Tops',
-    'Dresses',
-    'Purses',
-    'Bottoms',
-    'Accessories',
-  ];
+    const categoryNames = [
+        'Jewelry',
+        'Lingerie',
+        'Outerwear',
+        'Tops',
+        'Dresses',
+        'Purses',
+        'Bottoms',
+        'Accessories',
+    ];
 
-  const categories = await Promise.all(
-    categoryNames.map((name) =>
-      prisma.category.upsert({
-        where: { name },
-        update: {},
-        create: { name },
-      })
-    )
-  );
+    const categories = await Promise.all(
+        categoryNames.map((name) =>
+            prisma.category.upsert({
+                where: { name },
+                update: {},
+                create: { name },
+            })
+        )
+    );
 
     console.log(`✅ Created or found ${categories.length} categories.`);
 
     // Helper to find category by name
     const getCategory = (name: string) =>
-    categories.find((c) => c.name === name)!;
+        categories.find((c) => c.name === name)!;
 
     // Seed sample items with relations
     const dressesCategory = await getCategory("Dresses");
@@ -62,7 +63,7 @@ async function main() {
         },
     });
 
-        await prisma.item.create({
+    await prisma.item.create({
         data: {
             quantity: 1,
             name: "City Triangles Womens Burgundy and Red Dress",

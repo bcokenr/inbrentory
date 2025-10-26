@@ -14,3 +14,5 @@ export type TransactionWithItems = Prisma.TransactionGetPayload<{
 export type TransactionWithItemsAndCategories = Prisma.TransactionGetPayload<{
   include: { items: { include: { categories: true } } };
 }>;
+
+export type Admin = Prisma.AdminGetPayload<>;

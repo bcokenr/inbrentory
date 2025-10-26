@@ -1,27 +1,19 @@
-"use client";
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import Link from 'next/link';
 
-import { useEffect, useState } from "react";
-import { Item } from '@/lib/definitions';
-
-export default function Home() {
-  const [items, setItems] = useState<Item[]>([]);
-
-  useEffect(() => {
-    fetch("/api/items")
-      .then((res) => res.json())
-      .then(setItems);
-  }, []);
-
+export default function Page() {
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold mb-4">InBrentory</h1>
-      <ul>
-        {items.map((item) => (
-          <li key={item.id} className="mb-2 border-b pb-1">
-            {item.name} - ${item.listPrice.toString()} ({item.quantity})
-          </li>
-        ))}
-      </ul>
+    <main className="flex min-h-screen flex-col p-6">
+      <div className="mt-4 flex grow flex-col gap-4 md:flex-row">
+        <div className="flex flex-col justify-center gap-6 rounded-lg bg-gray-50 px-6 py-10 md:w-2/5 md:px-20">
+          <Link
+            href="/login"
+            className="flex items-center gap-5 self-start rounded-lg bg-green-500 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-400 md:text-base"
+          >
+            <span>Log in</span> <ArrowRightIcon className="w-5 md:w-6" />
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }
