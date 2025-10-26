@@ -27,8 +27,8 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
-    "@types/node": "24.9.0",
-    "@types/react": "19.2.2",
+    "@types/node": "^24.9.0",
+    "@types/react": "^19.2.2",
     "prisma": "^6.0.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
