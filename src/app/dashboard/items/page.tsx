@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { Item } from '@/lib/definitions';
 import Search from '@/components/search';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function Page() {
+function ItemsList() {
     const [items, setItems] = useState<Item[]>([]);
     const searchParams = useSearchParams();
     const query = searchParams?.get('query') || null;
@@ -35,4 +36,12 @@ export default function Page() {
             </section>
         </main>
     );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading items...</div>}>
+      <ItemsList />
+    </Suspense>
+  );
 }
