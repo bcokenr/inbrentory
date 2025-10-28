@@ -5,17 +5,28 @@ import { Item } from '@/lib/definitions';
 import Search from '@/components/search';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import Pagination from "@/components/pagination";
 
 function ItemsList() {
     const [items, setItems] = useState<Item[]>([]);
+    const [totalPages, setTotalPages] = useState<number>(0);
     const searchParams = useSearchParams();
     const query = searchParams?.get('query') || null;
+    const page = searchParams?.get('page') || "1";
 
     useEffect(() => {
-        fetch(`/api/items${query ? '?q=' + query : ''}`)
+        const params = new URLSearchParams();
+        if (query) params.set("q", query);
+        params.set("page", page);
+
+        fetch(`/api/items?${params.toString()}`)
             .then((res) => res.json())
-            .then(setItems);
-    }, [query]);
+            .then(({ items, totalPages }) => {
+                setItems(items);
+                setTotalPages(totalPages);
+            })
+            .catch(console.error);
+    }, [query, page]);
 
     return (
         <main className="w-full">
@@ -34,14 +45,17 @@ function ItemsList() {
                     ))}
                 </ul>
             </section>
+            <div className="mt-5 flex w-full justify-center">
+                <Pagination totalPages={totalPages} />
+            </div>
         </main>
     );
 }
 
 export default function Page() {
-  return (
-    <Suspense fallback={<div>Loading items...</div>}>
-      <ItemsList />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={<div>Loading items...</div>}>
+            <ItemsList />
+        </Suspense>
+    );
 }
