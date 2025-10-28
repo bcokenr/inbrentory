@@ -6,6 +6,7 @@ import Search from '@/components/search';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Pagination from "@/components/pagination";
+import ItemsTable from "@/components/item";
 
 function ItemsList() {
     const [items, setItems] = useState<Item[]>([]);
@@ -37,13 +38,7 @@ function ItemsList() {
                 <Search placeholder="Search items..." />
             </div>
             <section className="mt-8">
-                <ul>
-                    {items.map((item) => (
-                        <li key={item.id} className="mb-2 border-b pb-1">
-                            {item.name} - ${item.listPrice.toString()} ({item.quantity})
-                        </li>
-                    ))}
-                </ul>
+                <ItemsTable items={items} />
             </section>
             <div className="mt-5 flex w-full justify-center">
                 <Pagination totalPages={totalPages} />

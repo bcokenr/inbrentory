@@ -37,6 +37,10 @@ export async function GET(req: Request) {
     orderBy: { createdAt: "desc" },
     take: ITEMS_PER_PAGE,
     skip,
+    include: {
+      categories: true,
+      transaction: true,
+    }
   });
 
   return NextResponse.json({ items, totalPages });
