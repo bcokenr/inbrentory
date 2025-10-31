@@ -30,9 +30,9 @@ export default function ItemsTable({
                       />} */}
                       <p>{item.name}</p>
                     </div>
-                    <p className="text-sm text-gray-500">{item.categories ? item.categories[0].name : '' }</p>
+                    <p className="text-sm text-gray-500">{item.categories && item.categories[0] ? item.categories[0].name : '' }</p>
                   </div>
-                  <div>{item.transaction && formatDateToLocal(item.transaction.createdAt.toString())}</div>
+                  <div>{item.transaction && item.transaction.createdAt && formatDateToLocal(item.transaction.createdAt.toString())}</div>
                 </div>
                 <div className="flex w-full items-center justify-between pt-4">
                   <div>
@@ -85,7 +85,7 @@ export default function ItemsTable({
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
-                    {item.categories ? item.categories[0].name : ''}
+                    {item.categories && item.categories[0] ? item.categories[0].name : ''}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     ${item.listPrice.toString()}

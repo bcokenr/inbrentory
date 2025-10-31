@@ -6,7 +6,8 @@ import Search from '@/components/search';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Pagination from "@/components/pagination";
-import ItemsTable from "@/components/item";
+import ItemsTable from "@/components/items/item";
+import { CreateItem } from "@/components/button";
 
 function ItemsList() {
     const [items, setItems] = useState<Item[]>([]);
@@ -36,6 +37,7 @@ function ItemsList() {
             </div>
             <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
                 <Search placeholder="Search items..." />
+                <CreateItem />
             </div>
             <section className="mt-8">
                 <ItemsTable items={items} />
