@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Breadcrumbs from '@/components/breadcrumbs';
 import type { Item } from '@/lib/definitions';
 import styles from '@/styles/items.module.css';
-import { DeleteItem } from '@/components/button';
+import { DeleteItem, UpdateItem } from '@/components/button';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -36,8 +36,9 @@ function Item({ item }: { item: Item }) {
         <>
             <header className={styles.itemHeader}>
                 <section className={styles.flexRow}>
+                    <h1 className="mr-8">{item.name}</h1>
+                    <UpdateItem id={item.id} />
                     <DeleteItem id={item.id} />
-                    <h1 className="ml-8">{item.name}</h1>
                 </section>
             </header>
         </>

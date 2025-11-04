@@ -30,8 +30,8 @@ export async function authenticate(
 const FormSchema = z.object({
     id: z.string(),
     name: z.string().min(1, { message: "Name is required" }),
-      costBasis: requiredNumber({ min: 0, message: "Please enter an amount greater than $0." }),
-  listPrice: requiredNumber({ min: 0, message: "Please enter an amount greater than $0." }),
+    costBasis: requiredNumber({ min: 0, message: "Please enter an amount greater than $0." }),
+    listPrice: requiredNumber({ min: 0, message: "Please enter an amount greater than $0." }),
     transactionPrice: z.coerce.number(),
     discountedListPrice: emptySafeNumber(),
     description: z.string(),
@@ -52,68 +52,68 @@ export type State = {
 };
 
 export async function fetchItemById(id: string) {
-  if (!id) {
-    throw new Error('Missing item ID');
-  }
-
-  try {
-    const item = await prisma.item.findUnique({
-      where: { id },
-      include: {
-        categories: true,
-        transaction: true,
-      },
-    });
-
-    if (!item) {
-      throw new Error(`Item not found for id: ${id}`);
+    if (!id) {
+        throw new Error('Missing item ID');
     }
 
-    return item;
-  } catch (error) {
-    console.error('Error fetching item by ID:', error);
-    throw new Error('Failed to fetch item');
-  }
+    try {
+        const item = await prisma.item.findUnique({
+            where: { id },
+            include: {
+                categories: true,
+                transaction: true,
+            },
+        });
+
+        if (!item) {
+            throw new Error(`Item not found for id: ${id}`);
+        }
+
+        return item;
+    } catch (error) {
+        console.error('Error fetching item by ID:', error);
+        throw new Error('Failed to fetch item');
+    }
 }
 
 export async function deleteItemAction(formData: FormData) {
-  const id = formData.get('id')?.toString();
-  if (!id) throw new Error('Missing item id');
+    const id = formData.get('id')?.toString();
+    if (!id) throw new Error('Missing item id');
 
-  // delete from DB
-  await prisma.item.delete({ where: { id } });
+    // delete from DB
+    await prisma.item.delete({ where: { id } });
 
-  // redirect after deletion
-  redirect('/dashboard/items');
+    // redirect after deletion
+    redirect('/dashboard/items');
 }
 
 export async function deleteItem(id: string) {
-  if (!id) {
-    throw new Error('Missing item ID');
-  }
-
-  try {
-    const existingItem = await prisma.item.findUnique({
-      where: { id },
-    });
-
-    if (!existingItem) {
-      throw new Error(`Item not found for id: ${id}`);
+    if (!id) {
+        throw new Error('Missing item ID');
     }
 
-    // Delete the item
-    await prisma.item.delete({
-      where: { id },
-    });
+    try {
+        const existingItem = await prisma.item.findUnique({
+            where: { id },
+        });
 
-    revalidatePath('/dashboard/items');
-    redirect('/dashboard/items');
-    
-    // return { success: true, message: "Item successfully deleted"};
-  } catch (error) {
-    console.error('Error deleting item:', error);
-    return { success: false, message: 'Failed to delete item.' };
-  }
+        if (!existingItem) {
+            throw new Error(`Item not found for id: ${id}`);
+        }
+
+        // Delete the item
+        await prisma.item.delete({
+            where: { id },
+        });
+
+        revalidatePath('/dashboard/items');
+        redirect('/dashboard/items');
+
+        // return { success: true, message: "Item successfully deleted"};
+    } catch (error) {
+        console.error('Error deleting item:', error);
+        return { success: false, message: 'Failed to delete item.' };
+    }
 }
 
 export async function createItem(prevState: State, formData: FormData) {
@@ -163,6 +163,70 @@ export async function createItem(prevState: State, formData: FormData) {
                     },
                 }
                 : {}),
+        },
+    });
+
+    revalidatePath('/dashboard/items');
+    redirect('/dashboard/items');
+
+    return { message: null, errors: {} };
+}
+
+export async function updateItem(id: string, prevState: State, formData: FormData) {
+    const rawFormData = Object.fromEntries(formData.entries());
+
+    const normalizedData = {
+        name: rawFormData.name,
+        description: rawFormData.description,
+        keywords: rawFormData.keywords,
+        measurements: rawFormData.measurements,
+        costBasis: rawFormData.costBasis,
+        listPrice: rawFormData.listPrice,
+        discountedListPrice: rawFormData.discountedListPrice,
+        transactionPrice: rawFormData.transactionPrice,
+        categories: rawFormData.categories,
+    };
+    console.log('test: ', normalizedData)
+
+    const validatedFormData = CreateItem.safeParse(normalizedData);
+    if (!validatedFormData.success) {
+        return {
+            errors: validatedFormData.error.flatten().fieldErrors,
+            message: 'Missing Fields. Failed to Create Item.',
+        };
+    }
+
+    let existingCategory = null;
+    if (normalizedData.categories) {
+        existingCategory = await prisma.category.findUnique({
+            where: { name: normalizedData.categories.toString() },
+        });
+    }
+
+    await prisma.item.update({
+        where: { id },
+        data: {
+            name: validatedFormData.data.name,
+            description: validatedFormData.data.description,
+            keywords: validatedFormData.data.keywords,
+            measurements: validatedFormData.data.measurements,
+            costBasis: validatedFormData.data.costBasis,
+            listPrice: validatedFormData.data.listPrice,
+            discountedListPrice: validatedFormData.data.discountedListPrice || null,
+            transactionPrice: validatedFormData.data.transactionPrice || null,
+            ...(existingCategory
+                ? {
+                    // replace existing relations with the new category
+                    categories: {
+                        set: [{ id: existingCategory.id }],
+                    },
+                }
+                : {
+                    // clear relations when no category provided
+                    categories: {
+                        set: [],
+                    },
+                }),
         },
     });
 
