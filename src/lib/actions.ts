@@ -76,6 +76,36 @@ export async function fetchItemById(id: string) {
     }
 }
 
+export async function fetchItemsByIds(ids: string[]) {
+    if (!ids || ids.length === 0) {
+        throw new Error('Missing item IDs');
+    }
+
+    try {
+        const items = await prisma.item.findMany({
+            where: {
+                id: {
+                    in: ids,
+                },
+            },
+            include: {
+                categories: true,
+                transaction: true,
+            },
+        });
+
+        if (!items || items.length === 0) {
+            throw new Error(`No items found for provided IDs: ${ids.join(', ')}`);
+        }
+
+        return items;
+    } catch (error) {
+        console.error('Error fetching items by IDs:', error);
+        throw new Error('Failed to fetch items');
+    }
+}
+
+
 export async function deleteItemAction(formData: FormData) {
     const id = formData.get('id')?.toString();
     if (!id) throw new Error('Missing item id');
@@ -108,11 +138,9 @@ export async function deleteItem(id: string) {
 
         revalidatePath('/dashboard/items');
         redirect('/dashboard/items');
-
-        // return { success: true, message: "Item successfully deleted"};
     } catch (error) {
         console.error('Error deleting item:', error);
-        return { success: false, message: 'Failed to delete item.' };
+        return { errors: [error], message: 'Failed to delete item.' };
     }
 }
 
@@ -186,7 +214,6 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
         transactionPrice: rawFormData.transactionPrice,
         categories: rawFormData.categories,
     };
-    console.log('test: ', normalizedData)
 
     const validatedFormData = CreateItem.safeParse(normalizedData);
     if (!validatedFormData.success) {
@@ -232,6 +259,23 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
 
     revalidatePath('/dashboard/items');
     redirect('/dashboard/items');
+
+    return { message: null, errors: {} };
+}
+
+export async function markItemsAsPrinted(itemIds: string[]) {
+    if (!itemIds || itemIds.length === 0) return;
+    try {
+        await prisma.item.updateMany({
+            where: { id: { in: itemIds } },
+            data: { hasPrintedTag: true },
+        });
+    } catch (error) {
+        console.error('Error updating item:', error);
+        return { errors: [error], message: 'Failed to mark item as printed.' };
+    }
+    revalidatePath('/dashboard/print');
+    redirect('/dashboard/print');
 
     return { message: null, errors: {} };
 }
