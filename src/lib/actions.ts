@@ -111,6 +111,24 @@ export async function deleteItemAction(formData: FormData) {
     const id = formData.get('id')?.toString();
     if (!id) throw new Error('Missing item id');
 
+    const item = await prisma.item.findUnique({
+        where: { id },
+        select: { imageUrls: true },
+    });
+
+    // Delete associated images (if any)
+    if (item?.imageUrls?.length) {
+        await Promise.all(
+            item.imageUrls.map(async (url) => {
+                try {
+                    await del(url);
+                } catch (err) {
+                    console.error("Failed to delete blob:", url, err);
+                }
+            })
+        );
+    }
+
     // delete from DB
     await prisma.item.delete({ where: { id } });
 
@@ -282,52 +300,52 @@ export async function markItemsAsPrinted(itemIds: string[]) {
 }
 
 export async function uploadItemImage(formData: FormData) {
-  const file = formData.get('file') as File;
-  const itemId = formData.get('itemId') as string;
+    const file = formData.get('file') as File;
+    const itemId = formData.get('itemId') as string;
 
-  if (!file || !itemId) return;
+    if (!file || !itemId) return;
 
-  // Upload to Vercel Blob
-  const blob = await put(`items/${itemId}-${file.name}`, file, {
-    access: 'public', // makes the URL public
-  });
+    // Upload to Vercel Blob
+    const blob = await put(`items/${itemId}-${file.name}`, file, {
+        access: 'public', // makes the URL public
+    });
 
-  // Save URL to DB
-  await prisma.item.update({
-    where: { id: itemId },
-    data: { imageUrls: { push: blob.url }},
-  });
+    // Save URL to DB
+    await prisma.item.update({
+        where: { id: itemId },
+        data: { imageUrls: { push: blob.url } },
+    });
 
-  revalidatePath(`/dashboard/items/${itemId}`);
+    revalidatePath(`/dashboard/items/${itemId}`);
 }
 
 export async function deleteImage(formData: FormData) {
-  const itemId = formData.get("itemId") as string;
-  const imageUrl = formData.get("imageUrl") as string;
+    const itemId = formData.get("itemId") as string;
+    const imageUrl = formData.get("imageUrl") as string;
 
-  if (!itemId || !imageUrl) return;
+    if (!itemId || !imageUrl) return;
 
-  // Delete file from Vercel Blob
-  await del(imageUrl);
-  
-  const existing = await prisma.item.findUnique({
-    where: { id: itemId },
-    select: { imageUrls: true },
-  });
+    // Delete file from Vercel Blob
+    await del(imageUrl);
 
-  if (!existing) {
-    throw new Error('Item not found');
-  }
-  if (existing?.imageUrls) {
-    // Write back without the deleted URL
-    await prisma.item.update({
-      where: { id: itemId },
-      data: {
-        imageUrls: existing.imageUrls.filter((u) => u !== imageUrl),
-      },
+    const existing = await prisma.item.findUnique({
+        where: { id: itemId },
+        select: { imageUrls: true },
     });
-  }
 
-  // Refresh the page
-  revalidatePath(`/dashboard/items/${itemId}`);
+    if (!existing) {
+        throw new Error('Item not found');
+    }
+    if (existing?.imageUrls) {
+        // Write back without the deleted URL
+        await prisma.item.update({
+            where: { id: itemId },
+            data: {
+                imageUrls: existing.imageUrls.filter((u) => u !== imageUrl),
+            },
+        });
+    }
+
+    // Refresh the page
+    revalidatePath(`/dashboard/items/${itemId}`);
 }
