@@ -7,7 +7,6 @@ import { DeleteItem, UpdateItem } from '@/components/button';
 import ImageUpload from '@/components/items/image-upload';
 import { DeleteImageButton } from '@/components/button';
 
-
 export default async function Page(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     const id = params.id;
