@@ -3,7 +3,7 @@
 import clsx from 'clsx';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { deleteItemAction } from '@/lib/actions';
+import { deleteItemAction, deleteImage } from '@/lib/actions';
 import React, { useEffect, useRef, useState } from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -130,5 +130,75 @@ export function UpdateItem({ id }: { id: string }) {
     >
       <PencilIcon className="w-5" />
     </Link>
+  );
+}
+
+
+
+export function DeleteImageButton({
+  itemId,
+  imageUrl,
+}: {
+  itemId: string;
+  imageUrl: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function confirmDelete() {
+    if (formRef.current) {
+      formRef.current.requestSubmit(); // triggers the server action
+    }
+    setOpen(false);
+  }
+
+  return (
+    <>
+      {/* Hidden form that triggers server action */}
+      <form
+        ref={formRef}
+        action={deleteImage}
+      >
+        <input type="hidden" name="itemId" value={itemId} />
+        <input type="hidden" name="imageUrl" value={imageUrl} />
+      </form>
+
+      {/* X button */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="absolute top-1 right-1 bg-black/40 hover:bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+      >
+        ✕
+      </button>
+
+      {/* Modal */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+            <h2 className="text-lg font-semibold mb-2">Delete Image?</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              This action will permanently remove this image.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-100 text-sm"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

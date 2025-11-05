@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { emptySafeNumber, requiredNumber } from "@/lib/zod-helpers";
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 
 export async function authenticate(
     prevState: string | undefined,
@@ -298,5 +298,36 @@ export async function uploadItemImage(formData: FormData) {
     data: { imageUrls: { push: blob.url }},
   });
 
+  revalidatePath(`/dashboard/items/${itemId}`);
+}
+
+export async function deleteImage(formData: FormData) {
+  const itemId = formData.get("itemId") as string;
+  const imageUrl = formData.get("imageUrl") as string;
+
+  if (!itemId || !imageUrl) return;
+
+  // Delete file from Vercel Blob
+  await del(imageUrl);
+  
+  const existing = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { imageUrls: true },
+  });
+
+  if (!existing) {
+    throw new Error('Item not found');
+  }
+  if (existing?.imageUrls) {
+    // Write back without the deleted URL
+    await prisma.item.update({
+      where: { id: itemId },
+      data: {
+        imageUrls: existing.imageUrls.filter((u) => u !== imageUrl),
+      },
+    });
+  }
+
+  // Refresh the page
   revalidatePath(`/dashboard/items/${itemId}`);
 }

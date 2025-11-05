@@ -5,6 +5,8 @@ import type { Item } from '@/lib/definitions';
 import styles from '@/styles/items.module.css';
 import { DeleteItem, UpdateItem } from '@/components/button';
 import ImageUpload from '@/components/items/image-upload';
+import { DeleteImageButton } from '@/components/button';
+
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -49,6 +51,7 @@ function ItemDetails({ item }: { item: Item }) {
                                 alt={`${item.name} image ${index + 1}`}
                                 className="object-cover w-full h-full"
                             />
+                            <DeleteImageButton itemId={item.id} imageUrl={url} />
                         </div>
                     ))
                 ) : (
