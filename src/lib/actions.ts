@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { emptySafeNumber, requiredNumber } from "@/lib/zod-helpers";
+import { put } from '@vercel/blob';
 
 export async function authenticate(
     prevState: string | undefined,
@@ -278,4 +279,24 @@ export async function markItemsAsPrinted(itemIds: string[]) {
     redirect('/dashboard/print');
 
     return { message: null, errors: {} };
+}
+
+export async function uploadItemImage(formData: FormData) {
+  const file = formData.get('file') as File;
+  const itemId = formData.get('itemId') as string;
+
+  if (!file || !itemId) return;
+
+  // Upload to Vercel Blob
+  const blob = await put(`items/${itemId}-${file.name}`, file, {
+    access: 'public', // makes the URL public
+  });
+
+  // Save URL to DB
+  await prisma.item.update({
+    where: { id: itemId },
+    data: { imageUrls: { push: blob.url }},
+  });
+
+  revalidatePath(`/dashboard/items/${itemId}`);
 }

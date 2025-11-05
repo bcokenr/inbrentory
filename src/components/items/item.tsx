@@ -1,4 +1,4 @@
-// import Image from 'next/image';
+import Image from 'next/image';
 import { formatDateToLocal } from '@/lib/utils';
 import Link from 'next/link';
 import { Item } from '@/lib/definitions';
@@ -21,13 +21,13 @@ export default function ItemsTable({
                 <div className="flex items-center justify-between border-b pb-4">
                   <div>
                     <div className="mb-2 flex items-center">
-                      {/* {item.image_urls?.length > 0 && <Image
-                        src={item.image_urls[0]}
+                      {item.imageUrls?.length > 0 && <Image
+                        src={item.imageUrls[0]}
                         className={["mr-2"].join(" ")}
                         width={75}
                         height={75}
                         alt={`${item.name}`}
-                      />} */}
+                      />}
                       <p>{item.name}</p>
                     </div>
                     <p className="text-sm text-gray-500">{item.categories && item.categories[0] ? item.categories[0].name : '' }</p>
@@ -73,14 +73,14 @@ export default function ItemsTable({
                 >
                   <td className="whitespace-nowrap py-3 pl-6 pr-3">
                     <div className="flex items-center gap-3">
-                      {/* {item.image_urls?.length > 0 &&
+                      {item.imageUrls?.length > 0 &&
                       <Link href={`/dashboard/items/${item.id}`}>
                       <Image
-                        src={item.image_urls[0]}
+                        src={item.imageUrls[0]}
                         width={200}
                         height={200}
                         alt={`${item.name}`}
-                      /></Link>} */}
+                      /></Link>}
                       <Link href={`/dashboard/items/${item.id}`}><p>{item.name}</p></Link>
                     </div>
                   </td>
