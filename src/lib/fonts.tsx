@@ -32,7 +32,7 @@ export const courier = Courier_Prime({
 
 export const roboto = Roboto({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "700", "900"],
   variable: "--font-roboto",
 });
 
