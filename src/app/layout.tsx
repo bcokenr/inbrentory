@@ -1,6 +1,7 @@
 // app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
+import { caveat, kalam, roboto, lato } from '@/lib/fonts';
 
 export const metadata: Metadata = {
   title: 'InBrentory',
@@ -14,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${caveat.variable} ${kalam.variable} ${roboto.variable} ${lato.variable}`}>{children}</body>
     </html>
   );
 }
