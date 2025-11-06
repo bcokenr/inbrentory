@@ -5,8 +5,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { Item, Category } from '@/lib/definitions';
 import { State } from '@/lib/actions';
-import { formatDateToLocal } from '@/lib/utils';
 import { useEffect, useState } from "react";
+import styles from '@/styles/items.module.css';
 
 export default function ItemForm({ onSubmit, item, state }: { item?: Item | null, onSubmit: (formData: FormData) => void, state: State }) {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -22,7 +22,7 @@ export default function ItemForm({ onSubmit, item, state }: { item?: Item | null
 
     return (
         <form action={onSubmit}>
-            <div className="rounded-md bg-gray-50 p-4 md:p-6">
+            <div className={[styles.sometypeMono, "rounded-md bg-gray-50 p-4 md:p-6"].join(" ")}>
                 {/* Item name */}
                 <div className="mb-4">
                     <label htmlFor="name" className="mb-2 block text-sm font-medium">
@@ -260,7 +260,7 @@ export default function ItemForm({ onSubmit, item, state }: { item?: Item | null
 
 
             </div>
-            <div className="mt-6 flex justify-end gap-4">
+            <div className={[styles.sometypeMono, "mt-6 flex justify-end gap-4"].join(" ")}>
                 <Link
                     href={item ? `/dashboard/items/${item.id}` : "/dashboard/items"}
                     className="flex h-10 items-center rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
