@@ -6,7 +6,7 @@ import styles from "@/styles/home.module.css";
 
 export default function SideNav() {
   return (
-    <div className="flex h-full flex-col px-3 py-4 md:px-2 sideNav">
+    <div className={[styles.sometypeMono, "flex h-full flex-col px-3 py-4 md:px-2 sideNav"].join(" ")}>
       <Link
         className={`${styles.bannerLogo} mb-2 flex h-20 items-end justify-start rounded-md p-4 md:h-40`}
         href="/"

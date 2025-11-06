@@ -9,6 +9,7 @@ import Pagination from '@/components/pagination';
 import { PrintItemsList } from '@/components/items/print-items-list';
 import { CreateItem } from '@/components/button';
 import type { Item } from '@/lib/definitions';
+import styles from '@/styles/items.module.css';
 
 function PrintedItems() {
     const [items, setItems] = useState<Item[]>([]);
@@ -35,7 +36,7 @@ function PrintedItems() {
     }, [query, page, includePrinted]);
 
     return (
-        <div className="w-full">
+        <div className={[styles.sometypeMono, "w-full"].join(" ")}>
             <div className="flex w-full items-center justify-between">
                 <h1 className="text-2xl">Items</h1>
             </div>

@@ -18,7 +18,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     }
 
     return (
-        <main className="space-y-8">
+        <main className={["space-y-8", styles.sometypeMono].join(" ")}>
             <Breadcrumbs
                 breadcrumbs={[
                     { label: 'Items', href: '/dashboard/items' },

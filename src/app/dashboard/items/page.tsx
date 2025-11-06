@@ -8,6 +8,7 @@ import { Suspense } from 'react';
 import Pagination from "@/components/pagination";
 import ItemsTable from "@/components/items/item";
 import { CreateItem } from "@/components/button";
+import styles from '@/styles/items.module.css';
 
 function ItemsList() {
     const [items, setItems] = useState<Item[]>([]);
@@ -31,7 +32,7 @@ function ItemsList() {
     }, [query, page]);
 
     return (
-        <main className="w-full">
+        <main className={["w-full", styles.sometypeMono].join(" ")}>
             <div className="flex w-full items-center justify-between">
                 <h1 className={`text-2xl`}>Items</h1>
             </div>

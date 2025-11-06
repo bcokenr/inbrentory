@@ -13,3 +13,7 @@
     justify-content: space-between;
     width: 100%;
 }
+
+.sometypeMono {
+    font-family: "Sometype Mono", monospace;
+}
