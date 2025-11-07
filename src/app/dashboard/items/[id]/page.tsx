@@ -64,7 +64,7 @@ function ItemDetails({ item }: { item: Item }) {
 
 
             <header
-                className={`${styles.itemHeader} flex items-center justify-between border-b border-gray-200 pb-4`}
+                className={`${styles.itemHeader} lg:w-3/4 xl:w-1/2 flex items-center justify-between border-b border-gray-200 pb-4`}
             >
                 <h1 className="text-2xl font-semibold text-gray-900">{item.name}</h1>
                 <div className="flex gap-2">

@@ -59,3 +59,9 @@
   justify-self: end;
   align-self: end;
 }
+
+@media print {
+  .printTag {
+    border: none;
+  }
+}
