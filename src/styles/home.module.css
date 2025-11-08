@@ -7,3 +7,7 @@
 .sometypeMono {
     font-family: "Sometype Mono", monospace;
 }
+
+.zOne {
+    z-index: 1;
+}

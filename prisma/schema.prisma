@@ -26,6 +26,7 @@ model Item {
   updatedAt               DateTime     @updatedAt
   imageUrls               String[]     @default([])
   depopId                 String?      @unique 
+  transactionDate         DateTime?
 
   // 🔗 Relationships
   categories              Category[] @relation("ItemCategories")

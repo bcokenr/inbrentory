@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Breadcrumbs from '@/components/breadcrumbs';
 import type { Item } from '@/lib/definitions';
 import styles from '@/styles/items.module.css';
-import { DeleteItem, UpdateItem } from '@/components/button';
+import { DeleteItem, UpdateItem, MarkSoldButton } from '@/components/button';
 import ImageUpload from '@/components/items/image-upload';
 import { DeleteImageButton } from '@/components/button';
 
@@ -38,7 +38,17 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 function ItemDetails({ item }: { item: Item }) {
     return (
         <section className="flex flex-col gap-8">
-            <div className="flex flex-wrap gap-4">
+            <header
+                className={`${styles.itemHeader} lg:w-3/4 xl:w-1/2 flex items-center justify-between border-b border-gray-200 pb-4`}
+            >
+                {!item.transaction && !item.transactionDate && <div className="flex gap-2 mr-4"><MarkSoldButton itemId={item.id} /></div>}
+                <h1 className="text-2xl font-semibold text-gray-900">{item.name}</h1>
+                <div className="flex gap-2">
+                    <UpdateItem id={item.id} />
+                    <DeleteItem id={item.id} />
+                </div>
+            </header>
+            <div className="flex flex-wrap gap-4 z-0">
                 {item.imageUrls && item.imageUrls.length > 0 ? (
                     item.imageUrls.map((url, index) => (
                         <div
@@ -61,18 +71,6 @@ function ItemDetails({ item }: { item: Item }) {
                     <ImageUpload itemId={item.id} />
                 </div>
             </div>
-
-
-            <header
-                className={`${styles.itemHeader} lg:w-3/4 xl:w-1/2 flex items-center justify-between border-b border-gray-200 pb-4`}
-            >
-                <h1 className="text-2xl font-semibold text-gray-900">{item.name}</h1>
-                <div className="flex gap-2">
-                    <UpdateItem id={item.id} />
-                    <DeleteItem id={item.id} />
-                </div>
-            </header>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
                 <Detail label="Description" value={item.description || '—'} />
                 <Detail label="Cost Basis" value={item.costBasis?.toString() || '—'} />

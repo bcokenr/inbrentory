@@ -349,3 +349,29 @@ export async function deleteImage(formData: FormData) {
     // Refresh the page
     revalidatePath(`/dashboard/items/${itemId}`);
 }
+
+export async function markItemSold(
+  itemId: string,
+  formData: FormData
+) {
+  const transactionPrice = parseFloat(formData.get("transactionPrice") as string);
+  const storeCredit = formData.get("storeCredit") ? parseFloat(formData.get("storeCredit") as string) : null;
+  const costBasis = formData.get("costBasis") ? parseFloat(formData.get("costBasis") as string) : null;
+  const saleDate = formData.get("saleDate")
+    ? new Date(formData.get("saleDate") as string)
+    : new Date(); // default to now
+
+  if (isNaN(transactionPrice)) return;
+
+  await prisma.item.update({
+    where: { id: itemId },
+    data: {
+      transactionPrice,
+      storeCreditAmountApplied: storeCredit,
+      costBasis,
+      transactionDate: saleDate,
+    }
+  });
+
+  revalidatePath(`/items/${itemId}`);
+}

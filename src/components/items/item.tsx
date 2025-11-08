@@ -95,7 +95,7 @@ export default function ItemsTable({
                     {formatDateToLocal(item.createdAt.toString())}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
-                    {item.transaction && <div>{formatDateToLocal(item.transaction.createdAt.toString())}</div>}
+                    {item.transactionDate && <div>{formatDateToLocal(item.transactionDate.toString())}</div> || item.transaction && <div>{formatDateToLocal(item.transaction.createdAt.toString())}</div>}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-right">
                     <DeleteItem id={item.id} />

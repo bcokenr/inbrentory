@@ -3,8 +3,9 @@
 import clsx from 'clsx';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { deleteItemAction, deleteImage } from '@/lib/actions';
+import { deleteItemAction, deleteImage, markItemSold } from '@/lib/actions';
 import React, { useEffect, useRef, useState } from 'react';
+import styles from '@/styles/home.module.css';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
@@ -197,6 +198,60 @@ export function DeleteImageButton({
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function MarkSoldButton({ itemId }: { itemId: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)} className="border px-3 py-1 rounded-md hover:bg-gray-100">
+        Mark Sold
+      </button>
+
+      {open && (
+        <div className={[styles.zOne, "fixed inset-0 bg-black/40 flex justify-center items-center"].join(" ")}>
+          <form
+            action={formData => {
+              markItemSold(itemId, formData);
+              setOpen(false);
+            }}
+            className="bg-white p-4 rounded w-80 space-y-3"
+          >
+            <div>
+              <label>Transaction Price (required):</label>
+              <input name="transactionPrice" type="number" step="0.01" required className="border w-full" />
+            </div>
+
+            <div>
+              <label>Store Credit Applied:</label>
+              <input name="storeCredit" type="number" step="0.01" className="border w-full" />
+            </div>
+
+            <div>
+              <label>Cost Basis:</label>
+              <input name="costBasis" type="number" step="0.01" className="border w-full" />
+            </div>
+
+            <div>
+              <label>Sale Date:</label>
+              <input
+                name="saleDate"
+                type="datetime-local"
+                defaultValue={new Date().toISOString().slice(0,16)}
+                className="border w-full"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <button type="button" onClick={() => setOpen(false)}>Cancel</button>
+              <button type="submit" className="bg-blue-600 text-white px-3 py-1">Save</button>
+            </div>
+          </form>
         </div>
       )}
     </>
