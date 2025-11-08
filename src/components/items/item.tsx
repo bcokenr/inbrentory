@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { formatDateToLocal } from '@/lib/utils';
 import Link from 'next/link';
 import { Item } from '@/lib/definitions';
+import { DeleteItem } from '@/components/button';
 
 export default function ItemsTable({
   items,
@@ -95,7 +96,10 @@ export default function ItemsTable({
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     {item.transaction && <div>{formatDateToLocal(item.transaction.createdAt.toString())}</div>}
-                  </td>                  
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right">
+                    <DeleteItem id={item.id} />
+                  </td>
                 </tr>
               ))}
             </tbody>
