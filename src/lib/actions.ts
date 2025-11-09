@@ -35,6 +35,7 @@ const FormSchema = z.object({
     listPrice: requiredNumber({ min: 0, message: "Please enter an amount greater than $0." }),
     transactionPrice: z.coerce.number(),
     discountedListPrice: emptySafeNumber(),
+    storeCreditAmountApplied: z.coerce.number(),
     description: z.string(),
     keywords: z.string(),
     measurements: z.string(),
@@ -174,6 +175,7 @@ export async function createItem(prevState: State, formData: FormData) {
         costBasis: rawFormData.costBasis,
         listPrice: rawFormData.listPrice,
         discountedListPrice: rawFormData.discountedListPrice,
+        storeCreditAmountApplied: rawFormData.storeCreditAmountApplied,
         transactionPrice: rawFormData.transactionPrice,
         categories: rawFormData.categories,
         transactionDate: rawFormData.transactionPrice ? new Date() : null,
@@ -204,6 +206,7 @@ export async function createItem(prevState: State, formData: FormData) {
             listPrice: validatedFormData.data.listPrice,
             discountedListPrice: validatedFormData.data.discountedListPrice || null,
             transactionPrice: validatedFormData.data.transactionPrice || null,
+            storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
             transactionDate: normalizedData.transactionDate,
             ...(existingCategory
                 ? {
@@ -233,6 +236,7 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
         listPrice: rawFormData.listPrice,
         discountedListPrice: rawFormData.discountedListPrice,
         transactionPrice: rawFormData.transactionPrice,
+        storeCreditAmountApplied: rawFormData.storeCreditAmountApplied,
         categories: rawFormData.categories,
     };
 
@@ -261,6 +265,7 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
             costBasis: validatedFormData.data.costBasis,
             listPrice: validatedFormData.data.listPrice,
             discountedListPrice: validatedFormData.data.discountedListPrice || null,
+            storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
             transactionPrice: validatedFormData.data.transactionPrice || null,
             ...(existingCategory
                 ? {
