@@ -49,7 +49,7 @@ function ItemDetails({ item }: { item: Item }) {
                 </div>
             </header>
             <div className="flex flex-wrap gap-4 z-0">
-                {item.imageUrls && item.imageUrls.length > 0 ? (
+                {item.imageUrls && item.imageUrls.length > 0 && (
                     item.imageUrls.map((url, index) => (
                         <div
                             key={index}
@@ -63,8 +63,6 @@ function ItemDetails({ item }: { item: Item }) {
                             <DeleteImageButton itemId={item.id} imageUrl={url} />
                         </div>
                     ))
-                ) : (
-                    <p className="text-gray-500 italic">No images uploaded yet.</p>
                 )}
                 <div className="relative w-80 h-40 rounded-xl overflow-hidden shadow-sm border border-gray-200"
                 >

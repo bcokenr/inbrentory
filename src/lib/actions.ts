@@ -176,6 +176,7 @@ export async function createItem(prevState: State, formData: FormData) {
         discountedListPrice: rawFormData.discountedListPrice,
         transactionPrice: rawFormData.transactionPrice,
         categories: rawFormData.categories,
+        transactionDate: rawFormData.transactionPrice ? new Date() : null,
     };
 
     const validatedFormData = CreateItem.safeParse(normalizedData);
@@ -203,6 +204,7 @@ export async function createItem(prevState: State, formData: FormData) {
             listPrice: validatedFormData.data.listPrice,
             discountedListPrice: validatedFormData.data.discountedListPrice || null,
             transactionPrice: validatedFormData.data.transactionPrice || null,
+            transactionDate: normalizedData.transactionDate,
             ...(existingCategory
                 ? {
                     categories: {
