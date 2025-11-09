@@ -31,7 +31,7 @@ export async function authenticate(
 const FormSchema = z.object({
     id: z.string(),
     name: z.string().min(1, { message: "Name is required" }),
-    costBasis: requiredNumber({ min: 0, message: "Please enter an amount greater than $0." }),
+    costBasis: emptySafeNumber(),
     listPrice: requiredNumber({ min: 0, message: "Please enter an amount greater than $0." }),
     transactionPrice: z.coerce.number(),
     discountedListPrice: emptySafeNumber(),
