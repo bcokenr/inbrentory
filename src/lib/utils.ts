@@ -46,3 +46,8 @@ export const formatDateToLocal = (
   const formatter = new Intl.DateTimeFormat(locale, options);
   return formatter.format(date);
 };
+
+export function parseLocalDate(dateString: string) {
+  // Forces local time interpretation
+  return new Date(dateString + "T00:00:00");
+}
