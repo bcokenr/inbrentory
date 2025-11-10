@@ -34,6 +34,7 @@ export default function ItemForm({ onSubmit, item, state }: { item?: Item | null
                                 id="name"
                                 name="name"
                                 type="text"
+                                autoFocus={true}
                                 placeholder="(i.e. Whimsigoth Miniskirt)"
                                 defaultValue={item?.name || ''}
                                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"

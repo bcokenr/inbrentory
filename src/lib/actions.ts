@@ -8,6 +8,11 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { emptySafeNumber, requiredNumber } from "@/lib/zod-helpers";
 import { put, del } from '@vercel/blob';
+import { format, addDays, startOfDay, endOfDay } from 'date-fns';
+import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+
+type SaleRow = { date: string; total: number };
+const DEFAULT_TZ = 'America/Los_Angeles';
 
 export async function authenticate(
     prevState: string | undefined,
@@ -358,27 +363,107 @@ export async function deleteImage(formData: FormData) {
 }
 
 export async function markItemSold(
-  itemId: string,
-  formData: FormData
+    itemId: string,
+    formData: FormData
 ) {
-  const transactionPrice = parseFloat(formData.get("transactionPrice") as string);
-  const storeCredit = formData.get("storeCredit") ? parseFloat(formData.get("storeCredit") as string) : null;
-  const costBasis = formData.get("costBasis") ? parseFloat(formData.get("costBasis") as string) : null;
-  const saleDate = formData.get("saleDate")
-    ? new Date(formData.get("saleDate") as string)
-    : new Date(); // default to now
+    const transactionPrice = parseFloat(formData.get("transactionPrice") as string);
+    const storeCredit = formData.get("storeCredit") ? parseFloat(formData.get("storeCredit") as string) : null;
+    const costBasis = formData.get("costBasis") ? parseFloat(formData.get("costBasis") as string) : null;
+    const saleDate = formData.get("saleDate")
+        ? new Date(formData.get("saleDate") as string)
+        : new Date(); // default to now
 
-  if (isNaN(transactionPrice)) return;
+    if (isNaN(transactionPrice)) return;
 
-  await prisma.item.update({
-    where: { id: itemId },
-    data: {
-      transactionPrice,
-      storeCreditAmountApplied: storeCredit,
-      costBasis,
-      transactionDate: saleDate,
+    await prisma.item.update({
+        where: { id: itemId },
+        data: {
+            transactionPrice,
+            storeCreditAmountApplied: storeCredit,
+            costBasis,
+            transactionDate: saleDate,
+        }
+    });
+
+    revalidatePath(`/items/${itemId}`);
+}
+
+
+export async function getDailySales(
+    start: Date,
+    end: Date,
+    timeZone: string = DEFAULT_TZ
+): Promise<SaleRow[]> {
+    // 1) Convert start/end (client-supplied) to zoned startOfDay / endOfDay in the given timezone
+    //    Then convert those to UTC so we can query the DB (DB timestamps are usually stored in UTC).
+    const zonedStart = utcToZonedTime(start, timeZone);
+    const zonedEnd = utcToZonedTime(end, timeZone);
+
+    const startOfRange = startOfDay(zonedStart);
+    const endOfRange = endOfDay(zonedEnd);
+
+    const queryStartUtc = zonedTimeToUtc(startOfRange, timeZone);
+    const queryEndUtc = zonedTimeToUtc(endOfRange, timeZone);
+
+    // 2) Query transactions from DB that fall in that UTC window
+    //    Also include items that have transactionDate but no transactionId as single-item transactions.
+    //    Adjust fields to match your schema (transaction.transactionDate, item.transactionDate, prices, etc).
+    const [transactions, itemsWithDates] = await Promise.all([
+        prisma.transaction.findMany({
+            where: {
+                createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+            },
+            select: {
+                id: true,
+                createdAt: true,
+                total: true,
+            },
+        }),
+        prisma.item.findMany({
+            where: {
+                transactionId: null,
+                // ensure that transactionDate is within the UTC range as well
+                transactionDate: { gte: queryStartUtc, lte: queryEndUtc },
+            },
+            select: {
+                id: true,
+                transactionDate: true,
+                transactionPrice: true,
+            },
+        }),
+    ]);
+
+    // 3) Build buckets keyed by local date (in the requested timezone)
+    const buckets: Record<string, number> = {};
+
+    const toLocalDateKey = (d: Date) => {
+        // convert to zoned time, then format YYYY-MM-DD using date-fns format (local in timezone)
+        const zoned = utcToZonedTime(d, timeZone);
+        return format(zoned, 'yyyy-MM-dd');
+    };
+
+    for (const t of transactions) {
+        // Use the correct timestamp on transaction (createdAt / transactionDate)
+        const key = toLocalDateKey(t.createdAt);
+        buckets[key] = (buckets[key] || 0) + Number(t.total ?? 0);
     }
-  });
 
-  revalidatePath(`/items/${itemId}`);
+    for (const it of itemsWithDates) {
+        const key = toLocalDateKey(it.transactionDate as Date);
+        buckets[key] = (buckets[key] || 0) + Number(it.transactionPrice ?? 0);
+    }
+
+    // 4) Fill in the full date range so empty days appear with total 0
+    // Build an array of dates from zonedStart to zonedEnd inclusive.
+    const results: SaleRow[] = [];
+    // We'll iterate in the timezone domain: start with zonedStart (already computed)
+    let cursor = zonedStart;
+    // Use addDays from date-fns which operates on plain Date objects
+    while (cursor <= zonedEnd) {
+        const key = format(cursor, 'yyyy-MM-dd'); // this uses the zoned local date
+        results.push({ date: key, total: +(buckets[key] || 0) });
+        cursor = addDays(cursor, 1);
+    }
+
+    return results;
 }

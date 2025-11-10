@@ -19,6 +19,8 @@
     "@vercel/blob": "^2.0.0",
     "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
+    "date-fns": "^2.30.0",
+    "date-fns-tz": "^2.0.1",
     "dotenv": "^17.2.3",
     "next": "15.6.0-canary.5",
     "next-auth": "5.0.0-beta.29",
@@ -29,6 +31,8 @@
     "qrcode.react": "^4.2.0",
     "react": "latest",
     "react-dom": "latest",
+    "react-is": "^19.2.0",
+    "recharts": "^3.4.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
