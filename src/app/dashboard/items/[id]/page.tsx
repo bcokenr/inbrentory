@@ -48,27 +48,6 @@ function ItemDetails({ item }: { item: Item }) {
                     <DeleteItem id={item.id} />
                 </div>
             </header>
-            <div className="flex flex-wrap gap-4 z-0">
-                {item.imageUrls && item.imageUrls.length > 0 && (
-                    item.imageUrls.map((url, index) => (
-                        <div
-                            key={index}
-                            className="relative w-40 h-40 rounded-xl overflow-hidden shadow-sm border border-gray-200"
-                        >
-                            <img
-                                src={url}
-                                alt={`${item.name} image ${index + 1}`}
-                                className="object-cover w-full h-full"
-                            />
-                            <DeleteImageButton itemId={item.id} imageUrl={url} />
-                        </div>
-                    ))
-                )}
-                <div className="relative w-80 h-40 rounded-xl overflow-hidden shadow-sm border border-gray-200"
-                >
-                    <ImageUpload itemId={item.id} />
-                </div>
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
                 <Detail label="Description" value={item.description || '—'} />
                 <Detail label="Cost Basis" value={item.costBasis?.toString() || '—'} />
@@ -100,6 +79,27 @@ function ItemDetails({ item }: { item: Item }) {
                     label="Updated"
                     value={new Date(item.updatedAt).toLocaleString()}
                 />
+            </div>
+            <div className="flex flex-wrap gap-4 z-0">
+                {item.imageUrls && item.imageUrls.length > 0 && (
+                    item.imageUrls.map((url, index) => (
+                        <div
+                            key={index}
+                            className="relative w-40 h-40 rounded-xl overflow-hidden shadow-sm border border-gray-200"
+                        >
+                            <img
+                                src={url}
+                                alt={`${item.name} image ${index + 1}`}
+                                className="object-cover w-full h-full"
+                            />
+                            <DeleteImageButton itemId={item.id} imageUrl={url} />
+                        </div>
+                    ))
+                )}
+                <div className="relative w-80 h-40 rounded-xl overflow-hidden shadow-sm border border-gray-200"
+                >
+                    <ImageUpload itemId={item.id} />
+                </div>
             </div>
         </section>
     );
