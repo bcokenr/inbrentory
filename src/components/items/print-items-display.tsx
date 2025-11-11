@@ -12,17 +12,14 @@ export function PrintItemsDisplay({ items }: { items: Item[] }) {
     }, []);
 
     return (
-        <div className="sheet">
+        <div className={styles.labels}>
             {items.map((item) => (
-                <div key={item.id} className={styles.printTag}>
-                    <div className={styles.branding}>WANNABE VINTAGE</div>
-
-                    <div className={styles.tagQr}>
+                <div key={item.id} className={styles.label}>
+                    <p className={styles.price}>${item.listPrice.toString()}</p>
+                    <p className={styles.name}>{item.name}</p>
+                    <div className={styles.qr}>
                         <ItemQr url={`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/items/${item.id}`} />
                     </div>
-
-                    <div className={styles.tagName}>{item.name}</div>
-                    <div className={styles.tagPrice}>${item.listPrice.toString()}</div>
                 </div>
             ))}
         </div>
