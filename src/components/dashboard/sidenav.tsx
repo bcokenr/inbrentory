@@ -20,7 +20,7 @@ export default function SideNav() {
       <div className="flex grow flex-row justify-between space-x-2 lg:flex-col lg:space-x-0 lg:space-y-2">
         <NavLinks />
         <div className="hidden h-auto w-full grow rounded-md bg-gray-50 lg:block"></div>
-        <form
+        {/* <form
           action={async () => {
             'use server';
             await signOut({ redirectTo: '/' });
@@ -30,7 +30,7 @@ export default function SideNav() {
             <PowerIcon className="w-6" />
             <div className="hidden lg:block">Sign Out</div>
           </button>
-        </form>
+        </form> */}
       </div>
     </div>
   );
