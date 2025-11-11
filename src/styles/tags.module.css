@@ -8,10 +8,8 @@
 }
 
 .name {
-    font-family: "Caveat", cursive;
-    font-size: 1.15rem;
-    margin-top: -24px;
-    margin-bottom: 12px;
+    font-family: "Sometype Mono", monospace;
+    font-size: 0.9rem;
     padding: 0 16px;
 
     /* limit to 3 lines */
@@ -26,9 +24,8 @@
     font-family: "Kalam", cursive;
     font-size: 1rem;
     font-weight: 600;
-    justify-self: end;
-    align-self: end;
     padding-right: 16px;
+    margin-top: -28px;
 }
 
 .labels {
