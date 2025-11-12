@@ -201,7 +201,7 @@ export async function createItem(prevState: State, formData: FormData) {
         });
     }
 
-    await prisma.item.create({
+    const item = await prisma.item.create({
         data: {
             name: validatedFormData.data.name,
             description: validatedFormData.data.description,
@@ -222,6 +222,22 @@ export async function createItem(prevState: State, formData: FormData) {
                 : {}),
         },
     });
+
+    // if there's a transactionPrice, also create a transaction record (supports sales for items not already in db)
+    if (normalizedData.transactionPrice) {
+        const finalTotal = validatedFormData.data.storeCreditAmountApplied ? Math.max(0, +(validatedFormData.data.transactionPrice - validatedFormData.data.storeCreditAmountApplied).toFixed(2)) : validatedFormData.data.transactionPrice;
+
+        await prisma.transaction.create({
+            data: {
+                subtotal: validatedFormData.data.transactionPrice,
+                total: finalTotal,
+                storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
+                items: {
+                    connect: { id: item.id },
+                },
+            },
+        });
+    }
 
     revalidatePath('/dashboard/items');
     redirect('/dashboard/items');
@@ -372,17 +388,20 @@ export async function markItemSold(
     const saleDate = formData.get("saleDate")
         ? new Date(formData.get("saleDate") as string)
         : new Date(); // default to now
+    const finalTotal = storeCredit ? Math.max(0, +(transactionPrice - storeCredit).toFixed(2)) : transactionPrice;
+
 
     if (isNaN(transactionPrice)) return;
 
-    await prisma.item.update({
-        where: { id: itemId },
+    await prisma.transaction.create({
         data: {
-            transactionPrice,
-            storeCreditAmountApplied: storeCredit,
-            costBasis,
-            transactionDate: saleDate,
-        }
+            subtotal: transactionPrice,
+            total: finalTotal,
+            storeCreditAmountApplied: storeCredit || null,
+            items: {
+                connect: { id: itemId },
+            },
+        },
     });
 
     revalidatePath(`/items/${itemId}`);
@@ -450,10 +469,7 @@ export async function getDailySales(
     const queryEndUtc = zonedTimeToUtc(endOfRange, timeZone);
 
     // 2) Query transactions from DB that fall in that UTC window
-    //    Also include items that have transactionDate but no transactionId as single-item transactions.
-    //    Adjust fields to match your schema (transaction.transactionDate, item.transactionDate, prices, etc).
-    const [transactions, itemsWithDates] = await Promise.all([
-        prisma.transaction.findMany({
+    const transactions = await prisma.transaction.findMany({
             where: {
                 createdAt: { gte: queryStartUtc, lte: queryEndUtc },
             },
@@ -462,20 +478,7 @@ export async function getDailySales(
                 createdAt: true,
                 total: true,
             },
-        }),
-        prisma.item.findMany({
-            where: {
-                transactionId: null,
-                // ensure that transactionDate is within the UTC range as well
-                transactionDate: { gte: queryStartUtc, lte: queryEndUtc },
-            },
-            select: {
-                id: true,
-                transactionDate: true,
-                transactionPrice: true,
-            },
-        }),
-    ]);
+        });
 
     // 3) Build buckets keyed by local date (in the requested timezone)
     const buckets: Record<string, number> = {};
@@ -490,11 +493,6 @@ export async function getDailySales(
         // Use the correct timestamp on transaction (createdAt / transactionDate)
         const key = toLocalDateKey(t.createdAt);
         buckets[key] = (buckets[key] || 0) + Number(t.total ?? 0);
-    }
-
-    for (const it of itemsWithDates) {
-        const key = toLocalDateKey(it.transactionDate as Date);
-        buckets[key] = (buckets[key] || 0) + Number(it.transactionPrice ?? 0);
     }
 
     // 4) Fill in the full date range so empty days appear with total 0
