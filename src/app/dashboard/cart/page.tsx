@@ -76,8 +76,8 @@ export default function CartPageClient() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center gap-3">
+          <div className="mt-4 space-y-3 text-right">
+            <div className="flex items-center gap-3 justify-end">
               <label className="text-sm font-medium">Store credit to apply:</label>
               <input
                 type="number"
@@ -89,11 +89,11 @@ export default function CartPageClient() {
               />
             </div>
 
-            <div className="flex justify-between column">
+            <div className="flex justify-between flex-col">
               <div className="text-lg font-semibold">Total: ${total.toFixed(2)}</div>
               <div className="text-lg font-semibold">After credit: ${totalAfterCredit.toFixed(2)}</div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 justify-end">
               <button onClick={() => { clearCart(); setCart([]); }} className="px-3 py-1 rounded border hover:bg-gray-100">Clear</button>
               <button onClick={handleCheckout} disabled={loading} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">
                 {loading ? 'Processing…' : 'Checkout'}
