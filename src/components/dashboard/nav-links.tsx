@@ -36,32 +36,34 @@ const links = [
 export default function NavLinks() {
   const pathname = usePathname();
   const [count, setCount] = useState<number>(() => {
-    try {
-      return getCart().reduce((s, c) => s + (c.quantity || 1), 0);
-    } catch (e) {
-      return 0;
-    }
+    // initialize to 0; we'll populate after hydration to avoid SSR mismatch
+    return 0;
   });
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      // if cart key changed (or cleared), update
-      if (!e.key || e.key === 'inbrentory_cart_v1') {
-        try {
-          setCount(getCart().reduce((s, c) => s + (c.quantity || 1), 0));
-        } catch (err) {
-          setCount(0);
-        }
-      }
-    }
-
-    function onCustom() {
+    function updateCountFromStorage() {
       try {
         setCount(getCart().reduce((s, c) => s + (c.quantity || 1), 0));
       } catch (err) {
         setCount(0);
       }
     }
+
+    function onStorage(e: StorageEvent) {
+      // if cart key changed (or cleared), update
+      if (!e.key || e.key === 'inbrentory_cart_v1') {
+        updateCountFromStorage();
+      }
+    }
+
+    function onCustom() {
+      updateCountFromStorage();
+    }
+
+    // populate count after hydration to avoid server/client mismatch
+    updateCountFromStorage();
+    setMounted(true);
 
     // listen for cross-tab storage events
     window.addEventListener('storage', onStorage);
@@ -89,7 +91,9 @@ export default function NavLinks() {
           >
             <LinkIcon className="w-6" />
             {link.name === 'Cart' ? (
-              <p className="hidden md:block">{link.name} <span className="text-sm">({count})</span></p>
+              <p className="hidden md:block">
+                {link.name} {mounted ? <span className="text-sm">({count})</span> : null}
+              </p>
             ) : (
               <p className="hidden md:block">{link.name}</p>
             )}
