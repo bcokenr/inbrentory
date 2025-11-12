@@ -1,14 +1,46 @@
+"use client";
+
 import Image from 'next/image';
 import { formatDateToLocal } from '@/lib/utils';
 import Link from 'next/link';
 import { Item } from '@/lib/definitions';
 import { DeleteItem } from '@/components/button';
+import { useEffect, useMemo, useState } from 'react';
+import { getCart } from '@/lib/cart';
 
 export default function ItemsTable({
   items,
 }: {
   items: Item[]
 }) {
+  const [inCartIds, setInCartIds] = useState<Set<string>>(() => new Set(getCart().map((c) => c.id)));
+
+  useEffect(() => {
+    function refresh() {
+      try {
+        setInCartIds(new Set(getCart().map((c) => c.id)));
+      } catch (e) {
+        setInCartIds(new Set());
+      }
+    }
+
+    function onStorage(e: StorageEvent) {
+      if (!e.key || e.key === 'inbrentory_cart_v1') refresh();
+    }
+
+    function onCustom() {
+      refresh();
+    }
+
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('inbrentory:cart-updated', onCustom as EventListener);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('inbrentory:cart-updated', onCustom as EventListener);
+    };
+  }, []);
+
+  const hasItems = useMemo(() => inCartIds, [inCartIds]);
   return (
     <div className="mt-6 flow-root">
       <div className="inline-block min-w-full align-middle">
@@ -29,7 +61,12 @@ export default function ItemsTable({
                         height={75}
                         alt={`${item.name}`}
                       />}
-                      <p>{item.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p>{item.name}</p>
+                        {hasItems.has(item.id) && (
+                          <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">In cart</span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-gray-500">{item.categories && item.categories[0] ? item.categories[0].name : '' }</p>
                   </div>
@@ -82,7 +119,7 @@ export default function ItemsTable({
                         height={200}
                         alt={`${item.name}`}
                       /></Link>}
-                      <Link href={`/dashboard/items/${item.id}`}><p>{item.name}</p></Link>
+                      <Link href={`/dashboard/items/${item.id}`}><p className="inline-flex items-center gap-2">{item.name} {hasItems.has(item.id) && <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">In cart</span>}</p></Link>
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">

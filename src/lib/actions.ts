@@ -388,6 +388,43 @@ export async function markItemSold(
     revalidatePath(`/items/${itemId}`);
 }
 
+export async function createTransaction(itemIds: string[]) {
+    if (!Array.isArray(itemIds) || itemIds.length === 0) {
+        throw new Error('No item IDs provided');
+    }
+
+    // fetch items and compute total using transactionPrice || discountedListPrice || listPrice
+    const items = await prisma.item.findMany({ where: { id: { in: itemIds } } });
+    if (!items || items.length === 0) {
+        throw new Error('No items found for given IDs');
+    }
+
+    const total = items.reduce((sum, it) => {
+        const p = Number(it.transactionPrice ?? it.discountedListPrice ?? it.listPrice ?? 0);
+        return sum + p;
+    }, 0);
+
+    const tx = await prisma.transaction.create({
+        data: {
+            total,
+            items: {
+                connect: items.map((i) => ({ id: i.id })),
+            },
+        },
+    });
+
+    // revalidate the cart page so any server-rendered cached views update
+    revalidatePath('/dashboard/cart');
+
+    return tx;
+}
+
+export async function processTransaction(formData: FormData) {
+    // server action to be used as a form action if desired
+    const ids = formData.getAll('itemIds').map((v) => String(v));
+    return await createTransaction(ids);
+}
+
 
 export async function getDailySales(
     start: Date,

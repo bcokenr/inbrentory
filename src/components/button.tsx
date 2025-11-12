@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { deleteItemAction, deleteImage, markItemSold } from '@/lib/actions';
 import React, { useEffect, useRef, useState } from 'react';
 import styles from '@/styles/home.module.css';
+import { useRouter } from 'next/navigation';
+import { addToCart, getCart, removeFromCart } from '@/lib/cart';
+import type { Item } from '@/lib/definitions';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
@@ -255,5 +258,55 @@ export function MarkSoldButton({ itemId }: { itemId: string }) {
         </div>
       )}
     </>
+  );
+}
+
+export function AddToCartButton({ item }: { item: Partial<Item> & { id: string; name: string } }) {
+  const router = useRouter();
+  // null = loading, true/false = loaded
+  const [inCart, setInCart] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    try {
+      const cart = getCart();
+      setInCart(cart.some((c) => c.id === item.id));
+    } catch (e) {
+      setInCart(false);
+    }
+  }, [item.id]);
+
+  function handleAdd() {
+    const price = Number(item.discountedListPrice ?? item.listPrice ?? 0);
+    addToCart({ id: item.id, name: item.name, price });
+    router.push('/dashboard/cart');
+  }
+
+  function handleRemove() {
+    removeFromCart(item.id);
+    setInCart(false);
+  }
+
+  // avoid flicker: don't render the button until we know whether the item is in cart
+  if (inCart === null) {
+    return <div style={{ width: 96, height: 40 }} />;
+  }
+
+  if (inCart) {
+    return (
+      <div className="flex items-center gap-2">
+        <button onClick={() => router.push('/dashboard/cart')} className="rounded-md border px-3 py-1 hover:bg-gray-100">View Cart</button>
+        <button onClick={handleRemove} className="rounded-md border px-3 py-1 hover:bg-gray-100">Remove</button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleAdd}
+      className="rounded-md border px-3 py-1 hover:bg-gray-100"
+    >
+      Add to Cart
+    </button>
   );
 }
