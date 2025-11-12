@@ -5,11 +5,12 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const itemIds = body?.itemIds;
+    const storeCredit = body?.storeCreditAmount ?? body?.storeCredit ?? 0;
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
       return NextResponse.json({ error: 'No itemIds provided' }, { status: 400 });
     }
 
-    const tx = await createTransaction(itemIds);
+    const tx = await createTransaction(itemIds, storeCredit ? Number(storeCredit) : 0);
     return NextResponse.json({ success: true, transactionId: tx.id });
   } catch (error) {
     console.error('Error processing transaction', error);

@@ -388,7 +388,7 @@ export async function markItemSold(
     revalidatePath(`/items/${itemId}`);
 }
 
-export async function createTransaction(itemIds: string[]) {
+export async function createTransaction(itemIds: string[], storeCreditAmount?: number | null) {
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
         throw new Error('No item IDs provided');
     }
@@ -399,16 +399,21 @@ export async function createTransaction(itemIds: string[]) {
         throw new Error('No items found for given IDs');
     }
 
-    const total = items.reduce((sum, it) => {
-        const p = Number(it.transactionPrice ?? it.discountedListPrice ?? it.listPrice ?? 0);
+    const totalBeforeCredit = items.reduce((sum: number, it: any) => {
+        const p = Number(it.discountedListPrice ?? it.listPrice ?? 0);
         return sum + p;
     }, 0);
 
+    const credit = Number(storeCreditAmount ?? 0) || 0;
+    const finalTotal = Math.max(0, +(totalBeforeCredit - credit).toFixed(2));
+
     const tx = await prisma.transaction.create({
         data: {
-            total,
+            subtotal: Number(totalBeforeCredit.toFixed(2)),
+            total: finalTotal,
+            storeCreditAmountApplied: credit || null,
             items: {
-                connect: items.map((i) => ({ id: i.id })),
+                connect: items.map((i: any) => ({ id: i.id })),
             },
         },
     });
@@ -422,7 +427,9 @@ export async function createTransaction(itemIds: string[]) {
 export async function processTransaction(formData: FormData) {
     // server action to be used as a form action if desired
     const ids = formData.getAll('itemIds').map((v) => String(v));
-    return await createTransaction(ids);
+    const storeCredit = formData.get('storeCreditAmount') ?? formData.get('storeCredit') ?? null;
+    const creditNum = storeCredit ? Number(storeCredit) : 0;
+    return await createTransaction(ids, creditNum);
 }
 
 

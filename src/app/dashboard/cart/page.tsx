@@ -9,6 +9,7 @@ export default function CartPageClient() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [storeCredit, setStoreCredit] = useState<number>(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function CartPageClient() {
   }
 
   const total = cart.reduce((s, it) => s + (it.price || 0) * (it.quantity || 1), 0);
+  const totalAfterCredit = Math.max(0, +(total - (storeCredit || 0)).toFixed(2));
 
   async function handleCheckout() {
     if (cart.length === 0) return;
@@ -30,7 +32,7 @@ export default function CartPageClient() {
       const res = await fetch('/api/transactions/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: cart.map((c) => c.id) }),
+        body: JSON.stringify({ itemIds: cart.map((c) => c.id), storeCreditAmount: storeCredit }),
       });
 
       const body = await res.json();
@@ -40,7 +42,7 @@ export default function CartPageClient() {
         return;
       }
 
-      // success: clear client cart and navigate to cart (or success)
+  // success: clear client cart and navigate to cart (or success)
       clearCart();
       setCart([]);
       setMessage('Transaction completed');
@@ -74,9 +76,23 @@ export default function CartPageClient() {
               </li>
             ))}
           </ul>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium">Store credit to apply:</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={String(storeCredit || '')}
+                onChange={(e) => setStoreCredit(Number(e.target.value || 0))}
+                className="w-32 rounded-md border px-2 py-1"
+              />
+            </div>
 
-          <div className="flex justify-between items-center mt-4">
-            <div className="text-lg font-semibold">Total: ${total.toFixed(2)}</div>
+            <div className="flex justify-between column">
+              <div className="text-lg font-semibold">Total: ${total.toFixed(2)}</div>
+              <div className="text-lg font-semibold">After credit: ${totalAfterCredit.toFixed(2)}</div>
+            </div>
             <div className="flex items-center gap-2">
               <button onClick={() => { clearCart(); setCart([]); }} className="px-3 py-1 rounded border hover:bg-gray-100">Clear</button>
               <button onClick={handleCheckout} disabled={loading} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">

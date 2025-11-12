@@ -48,7 +48,9 @@ model Category {
 
 model Transaction {
   id          String       @id @default(uuid())
+  subtotal    Decimal?     @db.Decimal(10, 2)
   total       Decimal      @db.Decimal(10, 2)
+  storeCreditAmountApplied Decimal? @db.Decimal(10, 2)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @default(now())
 
