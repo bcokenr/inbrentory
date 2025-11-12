@@ -5,6 +5,7 @@ import {
   DocumentDuplicateIcon,
   PrinterIcon,
   ShoppingCartIcon,
+  ReceiptPercentIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -25,6 +26,11 @@ const links = [
     name: 'Print',
     href: '/dashboard/print',
     icon: PrinterIcon,
+  },
+    {
+    name: 'Transactions',
+    href: '/dashboard/transactions',
+    icon: ReceiptPercentIcon,
   },
   {
     name: 'Cart',
