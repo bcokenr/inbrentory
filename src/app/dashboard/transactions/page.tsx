@@ -3,10 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { format } from 'date-fns';
 import Pagination from '@/components/pagination';
 import styles from '@/styles/home.module.css';
+import type { TransactionWithItems } from '@/lib/definitions';
 
 export const revalidate = 0;
 
-export default async function Page({ searchParams }: { searchParams?: { page?: string } }) {
+export default async function Page(props: any) {
+  const searchParams = props?.searchParams as { page?: string } | undefined;
   const page = Number(searchParams?.page ?? '1') || 1;
   const pageSize = 10;
 
@@ -44,7 +46,7 @@ export default async function Page({ searchParams }: { searchParams?: { page?: s
               </tr>
             </thead>
             <tbody className="divide-y bg-white">
-              {transactions.map((t: any) => (
+              {transactions.map((t: TransactionWithItems) => (
                 <tr key={t.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 align-middle">{format(new Date(t.createdAt), 'MM/dd/yyyy')}</td>
                   <td className="px-4 py-3 align-middle">
