@@ -90,8 +90,15 @@ export default function CartPageClient() {
             </div>
 
             <div className="flex justify-between flex-col">
-              <div className="text-lg font-semibold">Total: ${total.toFixed(2)}</div>
-              <div className="text-lg font-semibold">After credit: ${totalAfterCredit.toFixed(2)}</div>
+              {storeCredit > 0 ? (
+                <>
+                    <div className="text-lg font-semibold">Sub-total: ${total.toFixed(2)}</div>  
+                    <div className="text-lg font-semibold">Store credit amount: ${storeCredit.toFixed(2)}</div>  
+                    <div className="text-lg font-semibold">Total: ${totalAfterCredit.toFixed(2)}</div>
+                </>
+              ) : (
+                <div className="text-lg font-semibold">Total: ${total.toFixed(2)}</div>
+              )}
             </div>
             <div className="flex items-center gap-2 justify-end">
               <button onClick={() => { clearCart(); setCart([]); }} className="px-3 py-1 rounded border hover:bg-gray-100">Clear</button>
