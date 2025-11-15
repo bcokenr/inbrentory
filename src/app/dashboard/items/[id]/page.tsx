@@ -85,6 +85,19 @@ function ItemDetails({ item }: { item: Item }) {
                     value={new Date(item.updatedAt).toLocaleString()}
                 />
             </div>
+            {/* Depop flags */}
+            <div className="mt-4">
+                <div className="flex items-center gap-6">
+                    <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" id="onDepop" name="onDepop" disabled defaultChecked={Boolean((item as any).onDepop)} className="h-4 w-4" />
+                        <span className="text-sm">On Depop</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" id="soldOnDepop" name="soldOnDepop" disabled defaultChecked={Boolean((item as any).soldOnDepop)} className="h-4 w-4" />
+                        <span className="text-sm">Sold on Depop</span>
+                    </label>
+                </div>
+            </div>
             <div className="flex flex-wrap gap-4 z-0">
                 {item.imageUrls && item.imageUrls.length > 0 && (
                     item.imageUrls.map((url, index) => (

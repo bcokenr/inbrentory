@@ -44,6 +44,8 @@ const FormSchema = z.object({
     description: z.string(),
     keywords: z.string(),
     measurements: z.string(),
+    onDepop: z.boolean().optional(),
+    soldOnDepop: z.boolean().optional(),
 });
 
 const CreateItem = FormSchema.omit({ id: true });
@@ -184,6 +186,8 @@ export async function createItem(prevState: State, formData: FormData) {
         transactionPrice: rawFormData.transactionPrice,
         categories: rawFormData.categories,
         transactionDate: rawFormData.transactionPrice ? new Date() : null,
+        onDepop: rawFormData.onDepop ? true : false,
+        soldOnDepop: rawFormData.soldOnDepop ? true : false,
     };
 
     const validatedFormData = CreateItem.safeParse(normalizedData);
@@ -213,6 +217,8 @@ export async function createItem(prevState: State, formData: FormData) {
             transactionPrice: validatedFormData.data.transactionPrice || null,
             storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
             transactionDate: normalizedData.transactionDate,
+            onDepop: normalizedData.onDepop,
+            soldOnDepop: normalizedData.soldOnDepop,
             ...(existingCategory
                 ? {
                     categories: {
@@ -259,6 +265,8 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
         transactionPrice: rawFormData.transactionPrice,
         storeCreditAmountApplied: rawFormData.storeCreditAmountApplied,
         categories: rawFormData.categories,
+        onDepop: rawFormData.onDepop ? true : false,
+        soldOnDepop: rawFormData.soldOnDepop ? true : false,
     };
 
     const validatedFormData = CreateItem.safeParse(normalizedData);
@@ -288,6 +296,8 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
             discountedListPrice: validatedFormData.data.discountedListPrice || null,
             storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
             transactionPrice: validatedFormData.data.transactionPrice || null,
+            onDepop: normalizedData.onDepop,
+            soldOnDepop: normalizedData.soldOnDepop,
             ...(existingCategory
                 ? {
                     // replace existing relations with the new category

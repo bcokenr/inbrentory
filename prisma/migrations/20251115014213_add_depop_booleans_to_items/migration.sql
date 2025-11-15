@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Item" ADD COLUMN     "onDepop" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "soldOnDepop" BOOLEAN NOT NULL DEFAULT false;

@@ -154,6 +154,31 @@ export default function ItemForm({ onSubmit, item, state }: { item?: Item | null
                     </div>
                 </div>
 
+                {/* onDepop and soldOnDepop checkboxes */}
+                <div className="mb-4 flex gap-6 items-center">
+                    <div className="flex items-center">
+                        <input
+                            id="onDepop"
+                            name="onDepop"
+                            type="checkbox"
+                            defaultChecked={Boolean((item as any)?.onDepop)}
+                            className="mr-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="onDepop" className="text-sm">On Depop</label>
+                    </div>
+
+                    <div className="flex items-center">
+                        <input
+                            id="soldOnDepop"
+                            name="soldOnDepop"
+                            type="checkbox"
+                            defaultChecked={Boolean((item as any)?.soldOnDepop)}
+                            className="mr-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="soldOnDepop" className="text-sm">Sold on Depop</label>
+                    </div>
+                </div>
+
                 {/* markdown price */}
                 <div className="mb-4">
                     <label htmlFor="discountedListPrice" className="mb-2 block text-sm font-medium">

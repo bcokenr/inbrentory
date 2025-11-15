@@ -29,6 +29,8 @@ model Item {
   imageUrls               String[]     @default([])
   depopId                 String?      @unique 
   transactionDate         DateTime?
+  onDepop                 Boolean      @default(false)
+  soldOnDepop             Boolean      @default(false)
 
   // 🔗 Relationships
   categories              Category[] @relation("ItemCategories")

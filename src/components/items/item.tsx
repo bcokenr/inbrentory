@@ -78,6 +78,16 @@ export default function ItemsTable({
                       ${item.listPrice.toString()}
                     </p>
                     <p>{formatDateToLocal(item.createdAt.toString())}</p>
+                    <div className="mt-2 flex items-center gap-4 text-sm">
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" disabled defaultChecked={Boolean((item).onDepop)} />
+                        <span>On Depop</span>
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" disabled defaultChecked={Boolean((item).soldOnDepop)} />
+                        <span>Sold on Depop</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -100,6 +110,12 @@ export default function ItemsTable({
                 </th>
                 <th scope="col" className="relative py-3 pl-6 pr-3 font-medium">
                   Sold
+                </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  On Depop
+                </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  Sold on Depop
                 </th>
               </tr>
             </thead>
@@ -133,6 +149,12 @@ export default function ItemsTable({
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     {item.transactionDate && <div>{formatDateToLocal(item.transactionDate.toString())}</div> || item.transaction && <div>{formatDateToLocal(item.transaction.createdAt.toString())}</div>}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3">
+                    <input type="checkbox" disabled readOnly defaultChecked={Boolean((item).onDepop)} />
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3">
+                    <input type="checkbox" disabled readOnly defaultChecked={Boolean((item).soldOnDepop)} />
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-right">
                     <DeleteItem id={item.id} />
