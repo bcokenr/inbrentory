@@ -227,7 +227,7 @@ export async function createItem(prevState: State, formData: FormData) {
                     },
                 }
                 : {}),
-        },
+        } as any,
     });
 
     // if there's a transactionPrice, also create a transaction record (supports sales for items not already in db)
@@ -313,7 +313,7 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
                         set: [],
                     },
                 }),
-        },
+        } as any,
     });
 
     revalidatePath('/dashboard/items');
@@ -522,10 +522,18 @@ export async function getDailySales(
     return results;
 }
 
+export type MonthlyRow = {
+    date: string; // YYYY-MM-01
+    storeTotal: number; // in-store (soldOnDepop = false)
+    depopTotal: number; // depop (soldOnDepop = true)
+    total: number; // storeTotal + depopTotal
+    count: number; // number of items sold in that month
+};
+
 export async function getMonthlySales(
     year: number = new Date().getFullYear(),
     timeZone: string = DEFAULT_TZ
-): Promise<SaleRow[]> {
+): Promise<MonthlyRow[]> {
     // Build start/end for the year in the requested timezone
     const yearStart = startOfYear(new Date(year, 0, 1));
     const yearEnd = endOfYear(new Date(year, 0, 1));
@@ -540,36 +548,59 @@ export async function getMonthlySales(
     const queryStartUtc = zonedTimeToUtc(startOfRange, timeZone);
     const queryEndUtc = zonedTimeToUtc(endOfRange, timeZone);
 
-    const transactions = await prisma.transaction.findMany({
+    // Query items that are associated with a transaction in the year window.
+    // We'll attribute each item's price (transactionPrice || discountedListPrice || listPrice)
+    // to the month of the item's transaction.createdAt, and bucket by soldOnDepop.
+    // Prisma client types in this workspace may be out-of-date until you run `prisma generate`.
+    // Cast `prisma.item` to any so we can select the new fields and still build locally.
+    const items: any[] = await (prisma.item as any).findMany({
         where: {
-            createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+            transaction: {
+                is: {
+                    createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+                },
+            },
         },
-        select: {
-            createdAt: true,
-            total: true,
+        include: {
+            transaction: true,
         },
     });
 
-    // bucket by month (use YYYY-MM-01 as the key so it's ISO parsable)
-    const buckets: Record<string, number> = {};
+    const buckets: Record<string, { store: number; depop: number; count: number }> = {};
 
     const toMonthKey = (d: Date) => {
         const zoned = utcToZonedTime(d, timeZone);
-        // Use first day of month for a stable ISO date
         return format(zoned, 'yyyy-MM-01');
     };
 
-    for (const t of transactions) {
-        const key = toMonthKey(t.createdAt);
-        buckets[key] = (buckets[key] || 0) + Number(t.total ?? 0);
+    for (const it of items) {
+        const txDate = (it as any).transaction?.createdAt;
+        if (!txDate) continue;
+        const key = toMonthKey(txDate);
+        const price = Number((it as any).transactionPrice ?? (it as any).discountedListPrice ?? (it as any).listPrice ?? 0) || 0;
+        if (!buckets[key]) buckets[key] = { store: 0, depop: 0, count: 0 };
+        if ((it as any).soldOnDepop) {
+            buckets[key].depop += price;
+        } else {
+            buckets[key].store += price;
+        }
+        buckets[key].count += 1;
     }
 
-    // Fill months Jan..Dec for the year in the timezone domain
-    const results: SaleRow[] = [];
+    const results: MonthlyRow[] = [];
     for (let m = 0; m < 12; m++) {
         const dt = new Date(year, m, 1);
         const key = format(utcToZonedTime(dt, timeZone), 'yyyy-MM-01');
-        results.push({ date: key, total: +(buckets[key] || 0) });
+        const b = buckets[key] || { store: 0, depop: 0, count: 0 };
+        const storeTotal = +(b.store || 0).toFixed(2);
+        const depopTotal = +(b.depop || 0).toFixed(2);
+        results.push({
+            date: key,
+            storeTotal,
+            depopTotal,
+            total: +(storeTotal + depopTotal).toFixed(2),
+            count: b.count || 0,
+        });
     }
 
     return results;

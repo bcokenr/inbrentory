@@ -11,28 +11,40 @@ import {
 } from "recharts";
 import { parseISO, format } from "date-fns";
 
+type MonthlyRow = {
+  date: string; // YYYY-MM-01
+  storeTotal: number;
+  depopTotal: number;
+  total: number;
+  count: number;
+};
+
 type Props = {
-  data: { date: string; total: number }[]; // date should be ISO like YYYY-MM-01
+  data: MonthlyRow[];
 };
 
 export function MonthlySalesChart({ data }: Props) {
+  // helper to format x-axis ticks to show month and count underneath
+  const tickFormatter = (date: string | number) => {
+    try {
+      const d = parseISO(String(date));
+      const monthLabel = format(d, "MMM");
+      const entry = data.find((x) => x.date === String(date));
+      const total = entry ? entry.total : 0;
+      // Recharts accepts multiline tick labels using `\n`
+      return `${monthLabel}\n\$${total}`;
+    } catch (e) {
+      return String(date);
+    }
+  };
+
   return (
     <div className="w-full h-72">
       <ResponsiveContainer>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
 
-          <XAxis
-            dataKey="date"
-            tickFormatter={(date) => {
-              try {
-                const d = parseISO(String(date));
-                return format(d, "MMM");
-              } catch (e) {
-                return String(date);
-              }
-            }}
-          />
+          <XAxis dataKey="date" tickFormatter={tickFormatter} />
 
           <YAxis />
           <Tooltip
@@ -43,10 +55,17 @@ export function MonthlySalesChart({ data }: Props) {
                 return String(date);
               }
             }}
-            formatter={(value) => [`$${(value as number).toFixed(2)}`, "Total Sales"]}
+            // Use the provided `name` (series name) to map to clearer labels
+            formatter={(value: any, name: any) => {
+              const label = name === 'Depop' ? 'Depop total' : name === 'In-store' ? 'In-store total' : String(name);
+              return [`$${(value as number).toFixed(2)}`, label];
+            }}
           />
 
-          <Bar dataKey="total" fill="green" />
+          {/* Bottom portion: in-store sales (lighter green) */}
+          <Bar dataKey="storeTotal" stackId="a" fill="#34D399" name="In-store" />
+          {/* Top portion: depop sales (darker green) */}
+          <Bar dataKey="depopTotal" stackId="a" fill="#059669" name="Depop" />
         </BarChart>
       </ResponsiveContainer>
     </div>
