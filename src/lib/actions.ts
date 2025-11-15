@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { emptySafeNumber, requiredNumber } from "@/lib/zod-helpers";
 import { put, del } from '@vercel/blob';
-import { format, addDays, startOfDay, endOfDay } from 'date-fns';
+import { format, addDays, startOfDay, endOfDay, startOfYear, endOfYear } from 'date-fns';
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 
 type SaleRow = { date: string; total: number };
@@ -206,6 +206,7 @@ export async function createItem(prevState: State, formData: FormData) {
     }
 
     const item = await prisma.item.create({
+        // Cast to any because Prisma client types may be out of date locally until prisma generate is run
         data: {
             name: validatedFormData.data.name,
             description: validatedFormData.data.description,
@@ -286,6 +287,7 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
 
     await prisma.item.update({
         where: { id },
+        // Cast to any because Prisma client types may be out of date locally until prisma generate is run
         data: {
             name: validatedFormData.data.name,
             description: validatedFormData.data.description,
@@ -515,6 +517,59 @@ export async function getDailySales(
         const key = format(cursor, 'yyyy-MM-dd'); // this uses the zoned local date
         results.push({ date: key, total: +(buckets[key] || 0) });
         cursor = addDays(cursor, 1);
+    }
+
+    return results;
+}
+
+export async function getMonthlySales(
+    year: number = new Date().getFullYear(),
+    timeZone: string = DEFAULT_TZ
+): Promise<SaleRow[]> {
+    // Build start/end for the year in the requested timezone
+    const yearStart = startOfYear(new Date(year, 0, 1));
+    const yearEnd = endOfYear(new Date(year, 0, 1));
+
+    // Convert to zoned start/end and then to UTC for DB query
+    const zonedStart = utcToZonedTime(yearStart, timeZone);
+    const zonedEnd = utcToZonedTime(yearEnd, timeZone);
+
+    const startOfRange = startOfDay(zonedStart);
+    const endOfRange = endOfDay(zonedEnd);
+
+    const queryStartUtc = zonedTimeToUtc(startOfRange, timeZone);
+    const queryEndUtc = zonedTimeToUtc(endOfRange, timeZone);
+
+    const transactions = await prisma.transaction.findMany({
+        where: {
+            createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+        },
+        select: {
+            createdAt: true,
+            total: true,
+        },
+    });
+
+    // bucket by month (use YYYY-MM-01 as the key so it's ISO parsable)
+    const buckets: Record<string, number> = {};
+
+    const toMonthKey = (d: Date) => {
+        const zoned = utcToZonedTime(d, timeZone);
+        // Use first day of month for a stable ISO date
+        return format(zoned, 'yyyy-MM-01');
+    };
+
+    for (const t of transactions) {
+        const key = toMonthKey(t.createdAt);
+        buckets[key] = (buckets[key] || 0) + Number(t.total ?? 0);
+    }
+
+    // Fill months Jan..Dec for the year in the timezone domain
+    const results: SaleRow[] = [];
+    for (let m = 0; m < 12; m++) {
+        const dt = new Date(year, m, 1);
+        const key = format(utcToZonedTime(dt, timeZone), 'yyyy-MM-01');
+        results.push({ date: key, total: +(buckets[key] || 0) });
     }
 
     return results;
