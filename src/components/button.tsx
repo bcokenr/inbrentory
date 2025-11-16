@@ -3,7 +3,7 @@
 import clsx from 'clsx';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { deleteItemAction, deleteImage, markItemSold } from '@/lib/actions';
+import { deleteItemAction, deleteImage, markItemSold, deleteTransactionAction } from '@/lib/actions';
 import React, { useEffect, useRef, useState } from 'react';
 import styles from '@/styles/home.module.css';
 import { useRouter } from 'next/navigation';
@@ -134,6 +134,61 @@ export function UpdateItem({ id }: { id: string }) {
     >
       <PencilIcon className="w-5" />
     </Link>
+  );
+}
+
+export function DeleteTransaction({ id }: { id: string }) {
+  const [open, setOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    if (open) {
+      document.addEventListener('keydown', onKey);
+    } else {
+      document.removeEventListener('keydown', onKey);
+    }
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  function handleClick(e: React.MouseEvent) {
+    e.preventDefault();
+    setOpen(true);
+  }
+
+  function handleConfirm() {
+    formRef.current?.requestSubmit();
+  }
+
+  return (
+    <>
+      <form action={deleteTransactionAction} ref={formRef} className="inline-block">
+        <input type="hidden" name="id" value={id} />
+        <button
+          type="button"
+          onClick={handleClick}
+          className="flex h-10 items-center rounded-lg bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+        >
+          <TrashIcon className="h-5 md:mx-2" />
+        </button>
+      </form>
+
+      {open && (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)} />
+          <div className="relative z-10 max-w-md rounded-lg bg-white p-6 shadow-lg">
+            <h3 className="text-lg font-semibold">Delete transaction</h3>
+            <p className="mt-2 text-sm text-gray-600">Are you sure you want to delete this transaction? This will unlink associated items but will not delete the items themselves.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200">Cancel</button>
+              <button type="button" onClick={handleConfirm} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500">Confirm Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

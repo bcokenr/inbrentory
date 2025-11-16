@@ -120,9 +120,10 @@ export async function deleteItemAction(formData: FormData) {
     const id = formData.get('id')?.toString();
     if (!id) throw new Error('Missing item id');
 
+    // load item including transaction info so we can adjust transactions when needed
     const item = await prisma.item.findUnique({
         where: { id },
-        select: { imageUrls: true },
+        select: { imageUrls: true, transactionId: true, transactionPrice: true, discountedListPrice: true, listPrice: true },
     });
 
     // Delete associated images (if any)
@@ -138,10 +139,31 @@ export async function deleteItemAction(formData: FormData) {
         );
     }
 
-    // delete from DB
+    // Before deleting the item, if it belongs to a transaction, update or delete that transaction
+    if (item?.transactionId) {
+        const txId = item.transactionId;
+        const tx = await prisma.transaction.findUnique({ where: { id: txId }, include: { items: true } });
+        if (tx) {
+            // compute price of the deleted item
+            const itemPrice = Number(item.transactionPrice ?? item.discountedListPrice ?? item.listPrice ?? 0);
+
+            if ((tx.items?.length ?? 0) <= 1) {
+                // last item -> delete the transaction
+                await prisma.transaction.delete({ where: { id: txId } });
+            } else {
+                // update transaction totals by subtracting the item's price
+                const newSubtotal = Math.max(0, +(Number(tx.subtotal ?? 0) - itemPrice).toFixed(2));
+                const newTotal = Math.max(0, +(Number(tx.total ?? 0) - itemPrice).toFixed(2));
+                await prisma.transaction.update({ where: { id: txId }, data: { subtotal: newSubtotal, total: newTotal } });
+            }
+        }
+    }
+
+    // delete the item from DB
     await prisma.item.delete({ where: { id } });
 
     // redirect after deletion
+    revalidatePath('/dashboard/transactions');
     redirect('/dashboard/items');
 }
 
@@ -153,22 +175,78 @@ export async function deleteItem(id: string) {
     try {
         const existingItem = await prisma.item.findUnique({
             where: { id },
+            select: { transactionId: true, transactionPrice: true, discountedListPrice: true, listPrice: true },
         });
 
         if (!existingItem) {
             throw new Error(`Item not found for id: ${id}`);
         }
 
-        // Delete the item
-        await prisma.item.delete({
-            where: { id },
-        });
+        // If item belongs to a transaction, update or delete that transaction accordingly
+        if (existingItem.transactionId) {
+            const txId = existingItem.transactionId;
+            const tx = await prisma.transaction.findUnique({ where: { id: txId }, include: { items: true } });
+            if (tx) {
+                const itemPrice = Number(existingItem.transactionPrice ?? existingItem.discountedListPrice ?? existingItem.listPrice ?? 0);
+                if ((tx.items?.length ?? 0) <= 1) {
+                    await prisma.transaction.delete({ where: { id: txId } });
+                } else {
+                    const newSubtotal = Math.max(0, +(Number(tx.subtotal ?? 0) - itemPrice).toFixed(2));
+                    const newTotal = Math.max(0, +(Number(tx.total ?? 0) - itemPrice).toFixed(2));
+                    await prisma.transaction.update({ where: { id: txId }, data: { subtotal: newSubtotal, total: newTotal } });
+                }
+            }
+        }
 
+        // Delete the item
+        await prisma.item.delete({ where: { id } });
+
+        revalidatePath('/dashboard/transactions');
         revalidatePath('/dashboard/items');
         redirect('/dashboard/items');
     } catch (error) {
         console.error('Error deleting item:', error);
         return { errors: [error], message: 'Failed to delete item.' };
+    }
+}
+
+export async function deleteTransactionAction(formData: FormData) {
+    const id = formData.get('id')?.toString();
+    if (!id) throw new Error('Missing transaction id');
+
+    // Unlink items that belong to this transaction (leave items in DB but clear relation)
+    // Also clear sale-specific fields so items are treated as unsold
+    await prisma.item.updateMany({
+        where: { transactionId: id },
+        data: { transactionId: null, transactionDate: null, transactionPrice: null, soldOnDepop: false },
+    });
+
+    // delete the transaction
+    await prisma.transaction.delete({ where: { id } });
+
+    redirect('/dashboard/transactions');
+}
+
+export async function deleteTransaction(id: string) {
+    if (!id) throw new Error('Missing transaction id');
+
+    try {
+        const existing = await prisma.transaction.findUnique({ where: { id } });
+        if (!existing) throw new Error(`Transaction not found for id: ${id}`);
+
+        // Unlink items and clear sale-specific fields
+        await prisma.item.updateMany({
+            where: { transactionId: id },
+            data: { transactionId: null, transactionDate: null, transactionPrice: null, soldOnDepop: false },
+        });
+
+        await prisma.transaction.delete({ where: { id } });
+
+        revalidatePath('/dashboard/transactions');
+        redirect('/dashboard/transactions');
+    } catch (error) {
+        console.error('Error deleting transaction:', error);
+        return { errors: [error], message: 'Failed to delete transaction.' };
     }
 }
 

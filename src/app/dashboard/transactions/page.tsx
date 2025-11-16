@@ -5,6 +5,7 @@ import Pagination from '@/components/pagination';
 import styles from '@/styles/home.module.css';
 import type { TransactionWithItems } from '@/lib/definitions';
 import TransactionFilterBar from '@/components/dashboard/transaction-filter-bar';
+import { DeleteTransaction } from '@/components/button';
 
 export const revalidate = 0;
 
@@ -109,6 +110,15 @@ export default async function Page(props: Props) {
                   <td className="px-4 py-3 align-middle">${Number(t.subtotal ?? 0).toFixed(2)}</td>
                   <td className="px-4 py-3 align-middle">${Number(t.storeCreditAmountApplied ?? 0).toFixed(2)}</td>
                   <td className="px-4 py-3 align-middle">${Number(t.total ?? 0).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {/* Delete transaction button */}
+                    {/* Import DeleteTransaction from components/button */}
+                    {
+                      /* eslint-disable-next-line @typescript-eslint/ban-ts-comment */
+                    }
+                    {/* @ts-ignore */}
+                    <div className="inline-block"><DeleteTransaction id={t.id} /></div>
+                  </td>
                 </tr>
               ))}
             </tbody>
