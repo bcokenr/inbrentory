@@ -187,7 +187,13 @@ export async function createItem(prevState: State, formData: FormData) {
         transactionPrice: rawFormData.transactionPrice,
         categories: rawFormData.categories,
         // Use provided dateSold if present, otherwise default to now when a transactionPrice is supplied
-        transactionDate: rawFormData.dateSold ? new Date(String(rawFormData.dateSold)) : rawFormData.transactionPrice ? new Date() : null,
+        // Interpret the provided dateSold as a date in the app timezone (DEFAULT_TZ) at local midnight,
+        // then convert to UTC so storing `createdAt`/`transactionDate` preserves the intended local date.
+        transactionDate: rawFormData.dateSold
+            ? zonedTimeToUtc(new Date(String(rawFormData.dateSold) + 'T00:00:00'), DEFAULT_TZ)
+            : rawFormData.transactionPrice
+            ? new Date()
+            : null,
         onDepop: rawFormData.onDepop ? true : false,
         soldOnDepop: rawFormData.soldOnDepop ? true : false,
     };
@@ -270,8 +276,13 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
         transactionPrice: rawFormData.transactionPrice,
         storeCreditAmountApplied: rawFormData.storeCreditAmountApplied,
         categories: rawFormData.categories,
-        // Use provided dateSold if present, otherwise default to now when a transactionPrice is supplied
-        transactionDate: rawFormData.dateSold ? new Date(String(rawFormData.dateSold)) : rawFormData.transactionPrice ? new Date() : null,
+        // Use provided dateSold interpreted in the configured timezone (DEFAULT_TZ) at local midnight,
+        // converted to UTC. If no dateSold and a transactionPrice exists, default to now.
+        transactionDate: rawFormData.dateSold
+            ? zonedTimeToUtc(new Date(String(rawFormData.dateSold) + 'T00:00:00'), DEFAULT_TZ)
+            : rawFormData.transactionPrice
+            ? new Date()
+            : null,
         onDepop: rawFormData.onDepop ? true : false,
         soldOnDepop: rawFormData.soldOnDepop ? true : false,
     };
@@ -426,7 +437,7 @@ export async function markItemSold(
     const storeCredit = formData.get("storeCredit") ? parseFloat(formData.get("storeCredit") as string) : null;
     const costBasis = formData.get("costBasis") ? parseFloat(formData.get("costBasis") as string) : null;
     const saleDate = formData.get("saleDate")
-        ? new Date(formData.get("saleDate") as string)
+        ? zonedTimeToUtc(new Date(String(formData.get("saleDate")) + 'T00:00:00'), DEFAULT_TZ)
         : new Date(); // default to now
     const finalTotal = storeCredit ? Math.max(0, +(transactionPrice - storeCredit).toFixed(2)) : transactionPrice;
 
@@ -438,6 +449,7 @@ export async function markItemSold(
             subtotal: transactionPrice,
             total: finalTotal,
             storeCreditAmountApplied: storeCredit || null,
+            createdAt: saleDate,
             items: {
                 connect: { id: itemId },
             },
