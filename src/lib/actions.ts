@@ -9,10 +9,11 @@ import { z } from 'zod';
 import { emptySafeNumber, requiredNumber } from "@/lib/zod-helpers";
 import { put, del } from '@vercel/blob';
 import { format, addDays, startOfDay, endOfDay, startOfYear, endOfYear } from 'date-fns';
+import { DEFAULT_TZ } from '@/config/timezone';
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 
 type SaleRow = { date: string; total: number };
-const DEFAULT_TZ = 'America/Los_Angeles';
+// DEFAULT_TZ is provided by src/config/timezone.ts
 
 export async function authenticate(
     prevState: string | undefined,
