@@ -11,20 +11,20 @@
     font-family: "Sometype Mono", monospace;
     font-size: 0.9rem;
     padding: 0 16px;
+    text-align: start;
 
     /* limit to 3 lines */
     display: -webkit-box;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
+    line-clamp: 3;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
 .price {
-    font-family: "Kalam", cursive;
+    font-family: "Sometype Mono", monospace;
     font-size: 1rem;
     font-weight: 600;
-    padding-right: 16px;
     margin-top: -28px;
 }
 
@@ -35,8 +35,8 @@
 }
 
 .label {
-    width: 2in;
-    height: 2in;
+    width: 1.5in;
+    height: 3in;
     box-sizing: border-box;
     border: 1px solid #000;
     /* optional for testing */

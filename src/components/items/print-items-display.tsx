@@ -16,7 +16,7 @@ export function PrintItemsDisplay({ items }: { items: Item[] }) {
             {items.map((item) => (
                 <div key={item.id} className={styles.label}>
                     <p className={styles.name}>{item.name}</p>
-                    <p className={styles.price}>${item.listPrice.toString()}</p>
+                    <div className={styles.price}>${item.listPrice.toString()}</div>
                     <div className={styles.qr}>
                         <ItemQr url={`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/items/${item.id}`} />
                     </div>
