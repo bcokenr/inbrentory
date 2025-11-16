@@ -18,7 +18,7 @@ export function PrintItemsDisplay({ items }: { items: Item[] }) {
                     <p className={styles.name}>{item.name}</p>
                     <div className={styles.price}>${item.listPrice.toString()}</div>
                     <div className={styles.qr}>
-                        <ItemQr url={`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/items/${item.id}`} />
+                        <ItemQr url={`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/items/${item.id}?source=qr`} />
                     </div>
                 </div>
             ))}
