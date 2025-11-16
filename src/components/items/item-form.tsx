@@ -154,6 +154,28 @@ export default function ItemForm({ onSubmit, item, state }: { item?: Item | null
                     </div>
                 </div>
 
+                {/* Date sold */}
+                <div className="mb-4">
+                    <label htmlFor="dateSold" className="mb-2 block text-sm font-medium">
+                        Date sold
+                    </label>
+                    <div className="relative mt-2 rounded-md">
+                        <div className="relative">
+                            <input
+                                id="dateSold"
+                                name="dateSold"
+                                type="date"
+                                defaultValue={
+                                    (item as any)?.transactionDate
+                                        ? new Date((item as any).transactionDate).toISOString().slice(0, 10)
+                                        : new Date().toISOString().slice(0, 10)
+                                }
+                                className="peer block w-full rounded-md border border-gray-200 py-2 pl-3 text-sm outline-2 placeholder:text-gray-500"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 {/* onDepop and soldOnDepop checkboxes */}
                 <div className="mb-4 flex gap-6 items-center">
                     <div className="flex items-center">

@@ -185,7 +185,8 @@ export async function createItem(prevState: State, formData: FormData) {
         storeCreditAmountApplied: rawFormData.storeCreditAmountApplied,
         transactionPrice: rawFormData.transactionPrice,
         categories: rawFormData.categories,
-        transactionDate: rawFormData.transactionPrice ? new Date() : null,
+        // Use provided dateSold if present, otherwise default to now when a transactionPrice is supplied
+        transactionDate: rawFormData.dateSold ? new Date(String(rawFormData.dateSold)) : rawFormData.transactionPrice ? new Date() : null,
         onDepop: rawFormData.onDepop ? true : false,
         soldOnDepop: rawFormData.soldOnDepop ? true : false,
     };
@@ -227,7 +228,7 @@ export async function createItem(prevState: State, formData: FormData) {
                     },
                 }
                 : {}),
-        } as any,
+        },
     });
 
     // if there's a transactionPrice, also create a transaction record (supports sales for items not already in db)
@@ -239,6 +240,8 @@ export async function createItem(prevState: State, formData: FormData) {
                 subtotal: validatedFormData.data.transactionPrice,
                 total: finalTotal,
                 storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
+                // set createdAt to the provided sale date when available
+                createdAt: normalizedData.transactionDate || undefined,
                 items: {
                     connect: { id: item.id },
                 },
@@ -266,6 +269,8 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
         transactionPrice: rawFormData.transactionPrice,
         storeCreditAmountApplied: rawFormData.storeCreditAmountApplied,
         categories: rawFormData.categories,
+        // Use provided dateSold if present, otherwise default to now when a transactionPrice is supplied
+        transactionDate: rawFormData.dateSold ? new Date(String(rawFormData.dateSold)) : rawFormData.transactionPrice ? new Date() : null,
         onDepop: rawFormData.onDepop ? true : false,
         soldOnDepop: rawFormData.soldOnDepop ? true : false,
     };
@@ -285,6 +290,9 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
         });
     }
 
+    // Fetch existing item to determine whether it already has a linked transaction
+    const existingItem = await prisma.item.findUnique({ where: { id }, select: { transactionId: true } });
+
     await prisma.item.update({
         where: { id },
         // Cast to any because Prisma client types may be out of date locally until prisma generate is run
@@ -298,6 +306,7 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
             discountedListPrice: validatedFormData.data.discountedListPrice || null,
             storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
             transactionPrice: validatedFormData.data.transactionPrice || null,
+            transactionDate: normalizedData.transactionDate,
             onDepop: normalizedData.onDepop,
             soldOnDepop: normalizedData.soldOnDepop,
             ...(existingCategory
@@ -313,8 +322,26 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
                         set: [],
                     },
                 }),
-        } as any,
+        },
     });
+
+    // If a transactionPrice was provided and the item did not previously have a transaction,
+    // create a transaction record and attach the item. Use the provided transactionDate if present.
+    if (validatedFormData.data.transactionPrice && !existingItem?.transactionId) {
+        const finalTotal = validatedFormData.data.storeCreditAmountApplied ? Math.max(0, +(validatedFormData.data.transactionPrice - validatedFormData.data.storeCreditAmountApplied).toFixed(2)) : validatedFormData.data.transactionPrice;
+
+        await prisma.transaction.create({
+            data: {
+                subtotal: validatedFormData.data.transactionPrice,
+                total: finalTotal,
+                storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
+                createdAt: normalizedData.transactionDate || undefined,
+                items: {
+                    connect: { id },
+                },
+            },
+        });
+    }
 
     revalidatePath('/dashboard/items');
     redirect('/dashboard/items');
