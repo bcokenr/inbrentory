@@ -270,8 +270,8 @@ export async function createItem(prevState: State, formData: FormData) {
         transactionDate: rawFormData.dateSold
             ? zonedTimeToUtc(new Date(String(rawFormData.dateSold) + 'T00:00:00'), DEFAULT_TZ)
             : rawFormData.transactionPrice
-            ? new Date()
-            : null,
+                ? new Date()
+                : null,
         onDepop: rawFormData.onDepop ? true : false,
         soldOnDepop: rawFormData.soldOnDepop ? true : false,
     };
@@ -303,7 +303,7 @@ export async function createItem(prevState: State, formData: FormData) {
             discountedListPrice: validatedFormData.data.discountedListPrice || null,
             transactionPrice: validatedFormData.data.transactionPrice || null,
             storeCreditAmountApplied: validatedFormData.data.storeCreditAmountApplied || null,
-            transactionDate: normalizedData.transactionDate,
+            transactionDate: validatedFormData.data.transactionPrice ? normalizedData.transactionDate : null,
             onDepop: normalizedData.onDepop,
             soldOnDepop: normalizedData.soldOnDepop,
             ...(existingCategory
@@ -356,11 +356,9 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
         categories: rawFormData.categories,
         // Use provided dateSold interpreted in the configured timezone (DEFAULT_TZ) at local midnight,
         // converted to UTC. If no dateSold and a transactionPrice exists, default to now.
-        transactionDate: rawFormData.dateSold
+        transactionDate: rawFormData.transactionPrice ? rawFormData.dateSold
             ? zonedTimeToUtc(new Date(String(rawFormData.dateSold) + 'T00:00:00'), DEFAULT_TZ)
-            : rawFormData.transactionPrice
-            ? new Date()
-            : null,
+            : new Date() : null,
         onDepop: rawFormData.onDepop ? true : false,
         soldOnDepop: rawFormData.soldOnDepop ? true : false,
     };
@@ -600,15 +598,15 @@ export async function getDailySales(
 
     // 2) Query transactions from DB that fall in that UTC window
     const transactions = await prisma.transaction.findMany({
-            where: {
-                createdAt: { gte: queryStartUtc, lte: queryEndUtc },
-            },
-            select: {
-                id: true,
-                createdAt: true,
-                total: true,
-            },
-        });
+        where: {
+            createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+        },
+        select: {
+            id: true,
+            createdAt: true,
+            total: true,
+        },
+    });
 
     // 3) Build buckets keyed by local date (in the requested timezone)
     const buckets: Record<string, number> = {};
