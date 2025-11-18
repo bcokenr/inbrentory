@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getCart, removeFromCart, clearCart, type CartItem } from '@/lib/cart';
 import { useRouter } from 'next/navigation';
 import styles from '@/styles/home.module.css';
@@ -10,7 +10,11 @@ export default function CartPageClient() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [storeCredit, setStoreCredit] = useState<number>(0);
+  const [waiting, setWaiting] = useState(false);
+  const [waitingCheckoutId, setWaitingCheckoutId] = useState<string | null>(null);
+  const [waitingError, setWaitingError] = useState<string | null>(null);
   const router = useRouter();
+  const pollingIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     setCart(getCart());
@@ -29,24 +33,41 @@ export default function CartPageClient() {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch('/api/transactions/process', {
+      // Build line items for Square API from client cart
+      const lineItems = cart.map((c) => ({
+        name: c.name,
+        quantity: c.quantity || 1,
+        price: c.price || 0,
+        // include the internal item id so the webhook handler can map back if desired
+        sku: c.id,
+      }));
+
+      const res = await fetch('/api/square/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: cart.map((c) => c.id), storeCreditAmount: storeCredit }),
+        body: JSON.stringify({ lineItems, storeCreditAmount: storeCredit }),
       });
 
       const body = await res.json();
       if (!res.ok) {
-        setMessage(body?.error || 'Failed to process transaction');
+        setMessage(body?.error || 'Failed to create terminal checkout');
         setLoading(false);
         return;
       }
 
-  // success: clear client cart and navigate to cart (or success)
-      clearCart();
-      setCart([]);
-      setMessage('Transaction completed');
-      router.push('/dashboard/items');
+      const checkoutId = body?.checkoutId;
+      if (!checkoutId) {
+        setMessage('No checkout id returned from Square');
+        setLoading(false);
+        return;
+      }
+
+      // Show waiting UI and poll status endpoint for completion
+      setWaitingCheckoutId(checkoutId);
+      setWaiting(true);
+      setWaitingError(null);
+      // start polling
+      startPolling(checkoutId);
     } catch (e) {
       console.error(e);
       setMessage('Failed to process transaction');
@@ -54,6 +75,67 @@ export default function CartPageClient() {
       setLoading(false);
     }
   }
+
+  // Polling function checks our server for a transaction created for this checkoutId
+  function startPolling(checkoutId: string) {
+    let attempts = 0;
+    const maxAttempts = 60; // ~2 minutes if interval=2000
+    const interval = 2000;
+
+  const id = setInterval(async () => {
+      attempts += 1;
+      try {
+        const res = await fetch(`/api/square/checkout/status?checkoutId=${encodeURIComponent(checkoutId)}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setWaitingError(body?.error || `Status check failed (${res.status})`);
+          // continue polling unless max attempts
+        } else {
+          const body = await res.json();
+          if (body?.status === 'COMPLETED') {
+            if (pollingIdRef.current) clearInterval(pollingIdRef.current);
+            setWaiting(false);
+            setWaitingCheckoutId(null);
+            // success: clear client cart and show toast message (do not navigate)
+            clearCart();
+            setCart([]);
+            setMessage('Payment completed');
+            // auto-dismiss toast after 5s
+            setTimeout(() => setMessage(null), 5000);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Polling error', err);
+        setWaitingError('Polling error');
+      }
+
+      if (attempts >= maxAttempts) {
+        if (pollingIdRef.current) clearInterval(pollingIdRef.current);
+        setWaiting(false);
+        setWaitingError('Timed out waiting for terminal payment.');
+      }
+    }, interval);
+    // store id so we can clear from elsewhere
+    // @ts-ignore
+    pollingIdRef.current = id as unknown as number;
+  }
+
+  function cancelWaiting() {
+    if (pollingIdRef.current) {
+      clearInterval(pollingIdRef.current);
+      pollingIdRef.current = null;
+    }
+    setWaiting(false);
+    setWaitingCheckoutId(null);
+    setWaitingError('Cancelled by user');
+  }
+
+  useEffect(() => {
+    return () => {
+      if (pollingIdRef.current) clearInterval(pollingIdRef.current);
+    };
+  }, []);
 
   return (
     <main className={[styles.sometypeMono, "p-6"].join(" ")}>
@@ -108,6 +190,19 @@ export default function CartPageClient() {
             </div>
           </div>
           {message && <div className="mt-2 text-sm text-green-600">{message}</div>}
+        </div>
+      )}
+      {waiting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-md p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-2">Waiting for payment</h2>
+            <p className="text-sm text-gray-700 mb-4">Please complete the payment on the Square Terminal device.</p>
+            <div className="text-sm text-gray-600 break-words mb-4">Checkout id: <span className="font-mono">{waitingCheckoutId}</span></div>
+            {waitingError && <div className="text-sm text-red-600 mb-3">{waitingError}</div>}
+            <div className="flex justify-end gap-2">
+              <button onClick={cancelWaiting} className="px-3 py-1 rounded border hover:bg-gray-100">Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </main>
