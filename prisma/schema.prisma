@@ -56,8 +56,24 @@ model Transaction {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @default(now())
 
+  // Square Integration Fields
+  squareOrderId            String?   // Square Orders API order.id
+  squarePaymentId          String?   // Square Payments API payment.id
+  squareCheckoutId         String?   // Square Terminal checkout.id (useful for debugging)
+  squareLocationId         String?   // in case you support multi-location setups
+  paymentStatus            TransactionPaymentStatus @default(PENDING)
+  receiptUrl               String?   // Square receipt link, if desired
+
   // 🔗 Relationships
   items       Item[]
+}
+
+enum TransactionPaymentStatus {
+  PENDING
+  COMPLETED
+  CANCELED
+  FAILED
+  REFUNDED
 }
 
 model Admin {
