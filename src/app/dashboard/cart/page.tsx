@@ -553,7 +553,7 @@ export default function CartPageClient() {
   }
 
   return (
-    <main className={[styles.sometypeMono, "p-6"].join(" ")}>
+    <main className={[styles.sometypeMono].join(" ")}>
       <h1 className="text-2xl font-semibold mb-4">Cart</h1>
       {!cartLoaded ? (
         <div className="mt-6 flex items-center gap-3">
@@ -565,7 +565,7 @@ export default function CartPageClient() {
         </div>
       ) : (
         <>
-          <div className="mt-12 mb-4">
+          <div className="lg:mt-12 mb-4">
             <div className="flex gap-3">
               <button onClick={() => startScanner()} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Scan QR Code</button>
               <button onClick={() => { setShowAddModal(true); }} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700 ml-4">Add Item Without QR Code</button>

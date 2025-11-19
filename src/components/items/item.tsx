@@ -47,50 +47,52 @@ export default function ItemsTable({
         <div className="rounded-lg bg-gray-50 p-2 md:pt-0">
           <div className="md:hidden">
             {items?.map((item) => (
-              <div
-                key={item.id}
-                className="mb-2 w-full rounded-md bg-white p-4"
-              >
-                <div className="flex items-center justify-between border-b pb-4">
-                  <div>
-                    <div className="mb-2 flex items-center">
-                      {item.imageUrls?.length > 0 && <Image
-                        src={item.imageUrls[0]}
-                        className={["mr-2"].join(" ")}
-                        width={75}
-                        height={75}
-                        alt={`${item.name}`}
-                      />}
-                      <div className="flex items-center gap-2">
-                        <p>{item.name}</p>
-                        {hasItems.has(item.id) && (
-                          <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">In cart</span>
-                        )}
+              <Link href={`/dashboard/items/${item.id}`}>
+                <div
+                  key={item.id}
+                  className="mt-6 mb-12 w-full rounded-md bg-white p-4"
+                >
+                  <div className="flex items-center justify-between border-b pb-4">
+                    <div>
+                      <div className="mb-2 flex items-center">
+                        {item.imageUrls?.length > 0 && <Image
+                          src={item.imageUrls[0]}
+                          className={["mr-2"].join(" ")}
+                          width={75}
+                          height={75}
+                          alt={`${item.name}`}
+                        />}
+                        <div className="flex items-center gap-2">
+                          <p>{item.name}</p>
+                          {hasItems.has(item.id) && (
+                            <span className="rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">In cart</span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-500">{item.categories && item.categories[0] ? item.categories[0].name : '' }</p>
+                    </div>
+                    <div>{item.transaction && item.transaction.createdAt && formatDateToLocal(item.transaction.createdAt.toString())}</div>
+                  </div>
+                  <div className="flex w-full items-center justify-between pt-4">
+                    <div>
+                      <p className="text-xl font-medium">
+                        ${item.listPrice.toString()}
+                      </p>
+                      <p>{formatDateToLocal(item.createdAt.toString())}</p>
+                      <div className="mt-2 flex items-center gap-4 text-sm">
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" disabled defaultChecked={Boolean((item).onDepop)} />
+                          <span>On Depop</span>
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" disabled defaultChecked={Boolean((item).soldOnDepop)} />
+                          <span>Sold on Depop</span>
+                        </label>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500">{item.categories && item.categories[0] ? item.categories[0].name : '' }</p>
-                  </div>
-                  <div>{item.transaction && item.transaction.createdAt && formatDateToLocal(item.transaction.createdAt.toString())}</div>
-                </div>
-                <div className="flex w-full items-center justify-between pt-4">
-                  <div>
-                    <p className="text-xl font-medium">
-                      ${item.listPrice.toString()}
-                    </p>
-                    <p>{formatDateToLocal(item.createdAt.toString())}</p>
-                    <div className="mt-2 flex items-center gap-4 text-sm">
-                      <label className="inline-flex items-center gap-2">
-                        <input type="checkbox" disabled defaultChecked={Boolean((item).onDepop)} />
-                        <span>On Depop</span>
-                      </label>
-                      <label className="inline-flex items-center gap-2">
-                        <input type="checkbox" disabled defaultChecked={Boolean((item).soldOnDepop)} />
-                        <span>Sold on Depop</span>
-                      </label>
-                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
           <table className="hidden min-w-full text-gray-900 md:table">

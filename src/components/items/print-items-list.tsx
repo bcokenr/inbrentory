@@ -105,7 +105,7 @@ export function PrintItemsList({
                         </div>
                         <div className="md:hidden">
                             {items?.map((item) => (
-                                <section key={item.id}>
+                                <section key={item.id} className="flex items-center gap-4 mt-6">
                                     <div>
                                         <input
                                             type="checkbox"
