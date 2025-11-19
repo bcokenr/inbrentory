@@ -245,28 +245,30 @@ export default function CartPageClient() {
           readerRef.current = reader;
           setDecoderUsed('ZXing');
           try {
-            // listVideoInputDevices is a static helper on BrowserQRCodeReader
-            // @ts-ignore
-            const devices = await BrowserQRCodeReader.listVideoInputDevices();
-            // video devices enumerated
-            let preferredId: string | undefined = undefined;
-            if (devices && devices.length > 0) {
-              // try to find a label hinting at front/user-facing camera (preferred)
-              const front = devices.find((d: any) => /front|user|face|front camera|user-facing/i.test(d.label || ''));
-              preferredId = (front && front.deviceId) || devices[0].deviceId;
+            // Request a user-facing stream and decode from the running video element so
+            // browsers (including iPad Safari) are more likely to use the front camera.
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } } });
+            streamRef.current = stream;
+            if (videoRef.current) {
+              try { videoRef.current.muted = true; } catch { }
+              videoRef.current.srcObject = stream;
+              await new Promise<void>((resolve) => {
+                const v = videoRef.current!;
+                if (v.readyState >= 2) return resolve();
+                const onMeta = () => { v.removeEventListener('loadedmetadata', onMeta); resolve(); };
+                v.addEventListener('loadedmetadata', onMeta);
+              });
+              await videoRef.current.play();
+              try { const vid = videoRef.current!; setVideoSize({ w: vid.videoWidth || 0, h: vid.videoHeight || 0 }); } catch { }
             }
 
-            // decodeFromVideoDevice will select the specified deviceId and stream; pass preferredId if found
-            // it accepts deviceId or undefined, and a video element or elementId
+            // decode directly from the running video element
             // @ts-ignore
-            reader.decodeFromVideoDevice(preferredId, videoRef.current!, (result: any, err: any) => {
+            reader.decodeFromVideoElement(videoRef.current!, (result: any, err: any) => {
               try {
                 if (mySession !== scanSessionRef.current) return;
                 if (err) {
-                  // ZXing reports NotFoundException frequently when no barcode is in-frame; suppress that as noisy.
                   const name = err?.name || (err && String(err).split(':')[0]);
-                  // expected: NotFoundException when no barcode in frame; other errors are handled below
-
                   // If we see a ChecksumException, try a single-shot higher-resolution capture to improve decode
                   try {
                     const isChecksum = /ChecksumException/i.test(String(name || err));
@@ -285,7 +287,6 @@ export default function CartPageClient() {
                           canvas.height = Math.max(240, Math.floor(h * scale));
                           const ctx = canvas.getContext('2d');
                           if (!ctx) return;
-                          // draw scaled image to improve decoder sampling
                           ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
                           // @ts-ignore - some versions expose decodeFromCanvas
                           if (typeof reader.decodeFromCanvas === 'function') {
@@ -293,79 +294,8 @@ export default function CartPageClient() {
                               const single = await reader.decodeFromCanvas(canvas);
                               if (single && single.getText) {
                                 const txt = single.getText();
-                                // single-shot decoded text
                                 setLastDecoded(String(txt));
                                 Promise.resolve().then(() => handleScannedValue(String(txt))).catch((e) => console.error('[ZXing] handleScannedValue error', e));
-                                return;
-                              }
-                            } catch (se) {
-                              console.debug('[ZXing] single-shot decode failed', se);
-                            }
-                          }
-                        } catch (inner) {
-                          console.error('[ZXing] single-shot capture error', inner);
-                        }
-                      })();
-                    }
-                  } catch (xx) {
-                    // ignore
-                  }
-                }
-                if (result && result.getText) {
-                  // Prevent duplicate processing of the same scan
-                  if (scannedRef.current) return;
-                  scannedRef.current = true;
-                  const text = result.getText();
-                  // decoded text received
-                  setLastDecoded(String(text));
-                  // stop the scanner immediately to avoid repeated callbacks
-                  try { if (readerRef.current) { try { readerRef.current.reset(); } catch { } } } catch { }
-                  stopScanner();
-                  Promise.resolve().then(() => handleScannedValue(String(text))).catch((e) => console.error('[ZXing] handleScannedValue error', e));
-                }
-              } catch (e) {
-                console.error('[ZXing] unexpected error in callback', e);
-              }
-            });
-          } catch (e) {
-            console.debug('[ZXing] device enumeration failed', e);
-            // fallback to default behavior
-            // @ts-ignore
-            reader.decodeFromVideoDevice(undefined, videoRef.current!, (result: any, err: any) => {
-              try {
-                if (mySession !== scanSessionRef.current) return;
-                if (err) {
-                  const name = err?.name || (err && String(err).split(':')[0]);
-                  // other decode/frame errors
-
-                  // Try single-shot capture on checksum errors (same logic as above)
-                  try {
-                    const isChecksum = /ChecksumException/i.test(String(name || err));
-                    const now = Date.now();
-                    if (isChecksum && (!lastCaptureAttemptRef.current || now - lastCaptureAttemptRef.current > 1200)) {
-                      lastCaptureAttemptRef.current = now;
-                      (async () => {
-                        try {
-                          const v = videoRef.current;
-                          if (!v) return;
-                          const canvas = document.createElement('canvas');
-                          const scale = 2;
-                          const w = v.videoWidth || 640;
-                          const h = v.videoHeight || 480;
-                          canvas.width = Math.max(320, Math.floor(w * scale));
-                          canvas.height = Math.max(240, Math.floor(h * scale));
-                          const ctx = canvas.getContext('2d');
-                          if (!ctx) return;
-                          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-                          // @ts-ignore
-                          if (typeof reader.decodeFromCanvas === 'function') {
-                            try {
-                              const single = await reader.decodeFromCanvas(canvas);
-                              if (single && single.getText) {
-                                const txt = single.getText();
-                                // single-shot decoded text
-                                setLastDecoded(String(txt));
-                                Promise.resolve().then(() => handleScannedValue(String(txt))).catch(() => { });
                                 return;
                               }
                             } catch (se) {
@@ -385,16 +315,82 @@ export default function CartPageClient() {
                   if (scannedRef.current) return;
                   scannedRef.current = true;
                   const text = result.getText();
-                  // decoded text received
                   setLastDecoded(String(text));
                   try { if (readerRef.current) { try { readerRef.current.reset(); } catch { } } } catch { }
                   stopScanner();
                   Promise.resolve().then(() => handleScannedValue(String(text))).catch(() => { });
                 }
-              } catch (e2) {
-                // unexpected error in callback suppressed
+              } catch (cbErr) {
+                console.error('[ZXing] unexpected error in callback', cbErr);
               }
             });
+          } catch (e) {
+            // If requesting a front-facing stream failed, fall back to letting ZXing pick a device
+            console.debug('[ZXing] getUserMedia decode-from-element failed, falling back', e);
+            try {
+              // @ts-ignore
+              reader.decodeFromVideoDevice(undefined, videoRef.current!, (result: any, err: any) => {
+                try {
+                  if (mySession !== scanSessionRef.current) return;
+                  if (err) {
+                    const name = err?.name || (err && String(err).split(':')[0]);
+                    try {
+                      const isChecksum = /ChecksumException/i.test(String(name || err));
+                      const now = Date.now();
+                      if (isChecksum && (!lastCaptureAttemptRef.current || now - lastCaptureAttemptRef.current > 1200)) {
+                        lastCaptureAttemptRef.current = now;
+                        (async () => {
+                          try {
+                            const v = videoRef.current;
+                            if (!v) return;
+                            const canvas = document.createElement('canvas');
+                            const scale = 2;
+                            const w = v.videoWidth || 640;
+                            const h = v.videoHeight || 480;
+                            canvas.width = Math.max(320, Math.floor(w * scale));
+                            canvas.height = Math.max(240, Math.floor(h * scale));
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) return;
+                            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+                            // @ts-ignore
+                            if (typeof reader.decodeFromCanvas === 'function') {
+                              try {
+                                const single = await reader.decodeFromCanvas(canvas);
+                                if (single && single.getText) {
+                                  const txt = single.getText();
+                                  setLastDecoded(String(txt));
+                                  Promise.resolve().then(() => handleScannedValue(String(txt))).catch(() => { });
+                                  return;
+                                }
+                              } catch (se) {
+                                // single-shot decode failed
+                              }
+                            }
+                          } catch (inner) {
+                            // single-shot capture error suppressed
+                          }
+                        })();
+                      }
+                    } catch (xx) { }
+                  }
+                  if (result && result.getText) {
+                    if (scannedRef.current) return;
+                    scannedRef.current = true;
+                    const text = result.getText();
+                    setLastDecoded(String(text));
+                    try { if (readerRef.current) { try { readerRef.current.reset(); } catch { } } } catch { }
+                    stopScanner();
+                    Promise.resolve().then(() => handleScannedValue(String(text))).catch(() => { });
+                  }
+                } catch (innerCbErr) {
+                  // suppressed
+                }
+              });
+            } catch (fallbackErr) {
+              console.debug('[ZXing] fallback decode failed', fallbackErr);
+              setScanError('No decoder available in this browser');
+              setScanning(false);
+            }
           }
         } catch (e) {
           console.warn('ZXing import failed', e);
