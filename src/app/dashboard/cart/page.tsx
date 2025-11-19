@@ -477,7 +477,9 @@ export default function CartPageClient() {
   return (
     <main className={[styles.sometypeMono, "p-6"].join(" ")}>
       <h1 className="text-2xl font-semibold mb-4">Cart</h1>
-
+      <div className="mt-12 mb-4">
+        <button onClick={() => startScanner()} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Scan QR Code</button>
+      </div>    
       {cart.length === 0 ? (
         <div>
           <p>Your cart is empty.</p>
@@ -500,10 +502,6 @@ export default function CartPageClient() {
               </li>
             ))}
           </ul>
-          <div className="mt-3">
-            <button onClick={() => startScanner()} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Scan QR Code</button>
-          </div>
-          
           <div className="mt-4 space-y-3 text-right">
             <div className="flex items-center gap-3 justify-end">
               <label className="text-sm font-medium">Store credit to apply:</label>
