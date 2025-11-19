@@ -53,7 +53,7 @@ export default function CartPageClient() {
       if (body?.categories && Array.isArray(body.categories)) {
         setCategories(body.categories.map((c: any) => ({ id: c.id, name: c.name })));
       }
-    }).catch(() => {});
+    }).catch(() => { });
     return () => { mounted = false; };
   }, [showAddModal]);
 
@@ -64,7 +64,7 @@ export default function CartPageClient() {
       try {
         nameInputRef.current?.focus();
         nameInputRef.current?.select();
-      } catch (e) {}
+      } catch (e) { }
     }, 50);
     return () => clearTimeout(t);
   }, [showAddModal]);
@@ -131,7 +131,7 @@ export default function CartPageClient() {
     const maxAttempts = 60; // ~2 minutes if interval=2000
     const interval = 2000;
 
-  const id = setInterval(async () => {
+    const id = setInterval(async () => {
       attempts += 1;
       try {
         const res = await fetch(`/api/square/checkout/status?checkoutId=${encodeURIComponent(checkoutId)}`);
@@ -197,35 +197,35 @@ export default function CartPageClient() {
     setLastDecoded(null);
 
     try {
-  // Request camera access (prefer environment camera) and request higher resolution
-  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        // ensure autoplay will be allowed: mute the element
-        try {
-          videoRef.current.muted = true;
-        } catch {}
-        videoRef.current.srcObject = stream;
-        // wait for metadata so video dimensions are available for canvas fallback
-        await new Promise<void>((resolve) => {
-          const v = videoRef.current!;
-          if (v.readyState >= 2) return resolve();
-          const onMeta = () => {
-            v.removeEventListener('loadedmetadata', onMeta);
-            resolve();
-          };
-          v.addEventListener('loadedmetadata', onMeta);
-        });
-        await videoRef.current.play();
+      // Use BarcodeDetector if available
+      if ((window as any).BarcodeDetector) {
+        // Request camera access (prefer user camera) and request higher resolution
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } } });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          // ensure autoplay will be allowed: mute the element
+          try {
+            videoRef.current.muted = true;
+          } catch { }
+          videoRef.current.srcObject = stream;
+          // wait for metadata so video dimensions are available for canvas fallback
+          await new Promise<void>((resolve) => {
+            const v = videoRef.current!;
+            if (v.readyState >= 2) return resolve();
+            const onMeta = () => {
+              v.removeEventListener('loadedmetadata', onMeta);
+              resolve();
+            };
+            v.addEventListener('loadedmetadata', onMeta);
+          });
+          await videoRef.current.play();
           // update measured video size so UI diagnostics show correct values
           try {
             const vid = videoRef.current!;
             setVideoSize({ w: vid.videoWidth || 0, h: vid.videoHeight || 0 });
-          } catch {}
-      }
+          } catch { }
+        }
 
-      // Use BarcodeDetector if available
-      if ((window as any).BarcodeDetector) {
         const formats = ['qr_code'];
         // @ts-ignore
         detectorRef.current = new (window as any).BarcodeDetector({ formats });
@@ -239,12 +239,11 @@ export default function CartPageClient() {
           // @ts-ignore
           const { BrowserQRCodeReader } = mod;
           // ensure any previous reader is reset to avoid lingering callbacks
-          try { if (readerRef.current) { await readerRef.current.reset?.(); } } catch {}
+          try { if (readerRef.current) { await readerRef.current.reset?.(); } } catch { }
           // create reader and start decoding from the video element
           const reader = new BrowserQRCodeReader();
           readerRef.current = reader;
           setDecoderUsed('ZXing');
-          // Prefer selecting a rear/environment camera if available to improve detection.
           try {
             // listVideoInputDevices is a static helper on BrowserQRCodeReader
             // @ts-ignore
@@ -252,9 +251,9 @@ export default function CartPageClient() {
             // video devices enumerated
             let preferredId: string | undefined = undefined;
             if (devices && devices.length > 0) {
-              // try to find a label hinting at back/rear/environment camera
-              const back = devices.find((d: any) => /back|rear|environment|rear camera|back camera/i.test(d.label || ''));
-              preferredId = (back && back.deviceId) || devices[0].deviceId;
+              // try to find a label hinting at front/user-facing camera (preferred)
+              const front = devices.find((d: any) => /front|user|face|front camera|user-facing/i.test(d.label || ''));
+              preferredId = (front && front.deviceId) || devices[0].deviceId;
             }
 
             // decodeFromVideoDevice will select the specified deviceId and stream; pass preferredId if found
@@ -266,7 +265,7 @@ export default function CartPageClient() {
                 if (err) {
                   // ZXing reports NotFoundException frequently when no barcode is in-frame; suppress that as noisy.
                   const name = err?.name || (err && String(err).split(':')[0]);
-                    // expected: NotFoundException when no barcode in frame; other errors are handled below
+                  // expected: NotFoundException when no barcode in frame; other errors are handled below
 
                   // If we see a ChecksumException, try a single-shot higher-resolution capture to improve decode
                   try {
@@ -303,7 +302,7 @@ export default function CartPageClient() {
                               console.debug('[ZXing] single-shot decode failed', se);
                             }
                           }
-                          } catch (inner) {
+                        } catch (inner) {
                           console.error('[ZXing] single-shot capture error', inner);
                         }
                       })();
@@ -317,19 +316,19 @@ export default function CartPageClient() {
                   if (scannedRef.current) return;
                   scannedRef.current = true;
                   const text = result.getText();
-                          // decoded text received
-                          setLastDecoded(String(text));
-                          // stop the scanner immediately to avoid repeated callbacks
-                          try { if (readerRef.current) { try { readerRef.current.reset(); } catch {} } } catch {}
-                          stopScanner();
-                          Promise.resolve().then(() => handleScannedValue(String(text))).catch((e) => console.error('[ZXing] handleScannedValue error', e));
+                  // decoded text received
+                  setLastDecoded(String(text));
+                  // stop the scanner immediately to avoid repeated callbacks
+                  try { if (readerRef.current) { try { readerRef.current.reset(); } catch { } } } catch { }
+                  stopScanner();
+                  Promise.resolve().then(() => handleScannedValue(String(text))).catch((e) => console.error('[ZXing] handleScannedValue error', e));
                 }
               } catch (e) {
                 console.error('[ZXing] unexpected error in callback', e);
               }
             });
-      } catch (e) {
-        console.debug('[ZXing] device enumeration failed', e);
+          } catch (e) {
+            console.debug('[ZXing] device enumeration failed', e);
             // fallback to default behavior
             // @ts-ignore
             reader.decodeFromVideoDevice(undefined, videoRef.current!, (result: any, err: any) => {
@@ -366,12 +365,12 @@ export default function CartPageClient() {
                                 const txt = single.getText();
                                 // single-shot decoded text
                                 setLastDecoded(String(txt));
-                                Promise.resolve().then(() => handleScannedValue(String(txt))).catch(() => {});
+                                Promise.resolve().then(() => handleScannedValue(String(txt))).catch(() => { });
                                 return;
                               }
-                              } catch (se) {
-                                // single-shot decode failed
-                              }
+                            } catch (se) {
+                              // single-shot decode failed
+                            }
                           }
                         } catch (inner) {
                           // single-shot capture error suppressed
@@ -388,16 +387,16 @@ export default function CartPageClient() {
                   const text = result.getText();
                   // decoded text received
                   setLastDecoded(String(text));
-                  try { if (readerRef.current) { try { readerRef.current.reset(); } catch {} } } catch {}
+                  try { if (readerRef.current) { try { readerRef.current.reset(); } catch { } } } catch { }
                   stopScanner();
-                  Promise.resolve().then(() => handleScannedValue(String(text))).catch(() => {});
+                  Promise.resolve().then(() => handleScannedValue(String(text))).catch(() => { });
                 }
               } catch (e2) {
                 // unexpected error in callback suppressed
               }
             });
           }
-            } catch (e) {
+        } catch (e) {
           console.warn('ZXing import failed', e);
           setScanError('No decoder available in this browser.');
           setScanning(false);
@@ -410,27 +409,63 @@ export default function CartPageClient() {
     }
   }
 
-  function stopScanner() {
+  async function stopScanner() {
     setScanning(false);
     // invalidate any in-flight callbacks for the current session
-    try { scanSessionRef.current = (scanSessionRef.current || 0) + 1; } catch {}
+    try { scanSessionRef.current = (scanSessionRef.current || 0) + 1; } catch { }
     if (pollingIdRef.current) {
       clearInterval(pollingIdRef.current);
       pollingIdRef.current = null;
     }
     if (detectorRef.current) detectorRef.current = null;
     if (readerRef.current) {
-      try { readerRef.current.reset(); } catch {}
+      try { readerRef.current.reset(); } catch { }
       readerRef.current = null;
     }
     if (videoRef.current) {
-      try { videoRef.current.pause(); } catch {}
+      try { videoRef.current.pause(); } catch { }
       // @ts-ignore
       videoRef.current.srcObject = null;
     }
     if (streamRef.current) {
       for (const t of streamRef.current.getTracks()) t.stop();
       streamRef.current = null;
+    }
+
+    // Aggressive fallback: stop any MediaStreamTracks still attached to video elements on the page.
+    // This helps in cases where a decoder library created an internal stream that wasn't exposed via our refs.
+    try {
+      const videos = Array.from(document.querySelectorAll('video')) as HTMLVideoElement[];
+      for (const v of videos) {
+        try {
+          const s = (v as any).srcObject as MediaStream | null;
+          if (s && typeof s.getTracks === 'function') {
+            for (const tr of s.getTracks()) {
+              try { tr.stop(); } catch (e) { }
+            }
+          }
+          try { v.srcObject = null; } catch (e) { }
+        } catch (inner) {
+          // ignore
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Final aggressive fallback: if the camera still appears in-use, request a short-lived stream and stop it.
+    // This will usually succeed silently if the user already granted permission and will forcibly free the device.
+    try {
+      if (navigator?.mediaDevices?.getUserMedia) {
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        try {
+          for (const tr of testStream.getTracks()) {
+            try { tr.stop(); } catch (e) { }
+          }
+        } catch (inner) { }
+      }
+    } catch (e) {
+      // ignore - don't surface permission errors here
     }
   }
 
@@ -440,7 +475,7 @@ export default function CartPageClient() {
       setAddListPrice('');
       setAddOnDepop(false);
       setAddCategory(null);
-    } catch (e) {}
+    } catch (e) { }
     setShowAddModal(false);
   }
 
@@ -475,7 +510,7 @@ export default function CartPageClient() {
     return;
   }
 
-  
+
 
   async function handleScannedValue(raw: string) {
     // Attempt to parse URL and extract item id from path /dashboard/items/:id
@@ -537,7 +572,7 @@ export default function CartPageClient() {
           <div className="mt-12 mb-4">
             <div className="flex gap-3">
               <button onClick={() => startScanner()} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Scan QR Code</button>
-              <button onClick={() => { setShowAddModal(true); }} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Add Item Without QR Code</button>
+              <button onClick={() => { setShowAddModal(true); }} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700 ml-4">Add Item Without QR Code</button>
             </div>
           </div>
 
@@ -655,40 +690,40 @@ export default function CartPageClient() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => { closeAddModal(); }} className="px-3 py-1 rounded border">Cancel</button>
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                      // Build FormData from controlled inputs (inputs are outside the form element)
-                      const fd = new FormData();
-                      fd.append('name', String(addName || ''));
-                      fd.append('listPrice', String(addListPrice || '0'));
-                      if (addOnDepop) fd.append('onDepop', '1');
-                      if (addCategory) fd.append('categories', String(addCategory));
-                    setAdding(true);
-                    try {
-                      // call server action
-                      const item = await createItemForCartForm(fd);
-                      if (item && item.id) {
-                        addToCart({ id: item.id, name: item.name, price: Number(item.listPrice || 0), quantity: 1 });
-                        setCart(getCart());
-                        setMessage('Item added to cart');
-                        setTimeout(() => setMessage(null), 4000);
-                        // close modal after successful add and clear inputs
-                        closeAddModal();
-                      }
-                    } catch (err) {
-                      console.error('create item (server action) error', err);
-                      setMessage('Failed to create item');
-                    } finally {
-                      setAdding(false);
-                    }
-                  }}>
-                    <input type="hidden" name="_action" value="create" />
-                    <button type="submit" disabled={adding} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">{adding ? 'Adding…' : 'Add to Cart'}</button>
-                  </form>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                // Build FormData from controlled inputs (inputs are outside the form element)
+                const fd = new FormData();
+                fd.append('name', String(addName || ''));
+                fd.append('listPrice', String(addListPrice || '0'));
+                if (addOnDepop) fd.append('onDepop', '1');
+                if (addCategory) fd.append('categories', String(addCategory));
+                setAdding(true);
+                try {
+                  // call server action
+                  const item = await createItemForCartForm(fd);
+                  if (item && item.id) {
+                    addToCart({ id: item.id, name: item.name, price: Number(item.listPrice || 0), quantity: 1 });
+                    setCart(getCart());
+                    setMessage('Item added to cart');
+                    setTimeout(() => setMessage(null), 4000);
+                    // close modal after successful add and clear inputs
+                    closeAddModal();
+                  }
+                } catch (err) {
+                  console.error('create item (server action) error', err);
+                  setMessage('Failed to create item');
+                } finally {
+                  setAdding(false);
+                }
+              }}>
+                <input type="hidden" name="_action" value="create" />
+                <button type="submit" disabled={adding} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">{adding ? 'Adding…' : 'Add to Cart'}</button>
+              </form>
             </div>
           </div>
         </div>
-  )}
+      )}
     </main>
   );
 }
