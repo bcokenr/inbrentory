@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
+import { createItemForCartForm } from '@/lib/actions';
 import { getCart, removeFromCart, clearCart, addToCart, type CartItem } from '@/lib/cart';
 import { useRouter } from 'next/navigation';
 import styles from '@/styles/home.module.css';
 
 export default function CartPageClient() {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartLoaded, setCartLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [storeCredit, setStoreCredit] = useState<number>(0);
@@ -17,6 +19,14 @@ export default function CartPageClient() {
   const pollingIdRef = useRef<number | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addName, setAddName] = useState<string>('');
+  const [addListPrice, setAddListPrice] = useState<string>('');
+  const [addOnDepop, setAddOnDepop] = useState<boolean>(false);
+  const [addCategory, setAddCategory] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [adding, setAdding] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const detectorRef = useRef<any>(null);
   const readerRef = useRef<any>(null);
@@ -30,7 +40,34 @@ export default function CartPageClient() {
 
   useEffect(() => {
     setCart(getCart());
+    // mark cart as loaded so we don't flash empty-state UI during initial render
+    setCartLoaded(true);
   }, []);
+
+  useEffect(() => {
+    if (!showAddModal) return;
+    // fetch categories for select
+    let mounted = true;
+    fetch(`/api/categories`).then((r) => r.json()).then((body) => {
+      if (!mounted) return;
+      if (body?.categories && Array.isArray(body.categories)) {
+        setCategories(body.categories.map((c: any) => ({ id: c.id, name: c.name })));
+      }
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [showAddModal]);
+
+  useEffect(() => {
+    if (!showAddModal) return;
+    // focus the name input once modal is open
+    const t = setTimeout(() => {
+      try {
+        nameInputRef.current?.focus();
+        nameInputRef.current?.select();
+      } catch (e) {}
+    }, 50);
+    return () => clearTimeout(t);
+  }, [showAddModal]);
 
   function handleRemove(id: string) {
     removeFromCart(id);
@@ -397,6 +434,16 @@ export default function CartPageClient() {
     }
   }
 
+  function closeAddModal() {
+    try {
+      setAddName('');
+      setAddListPrice('');
+      setAddOnDepop(false);
+      setAddCategory(null);
+    } catch (e) {}
+    setShowAddModal(false);
+  }
+
   function pollDetect() {
     const interval = 500;
     // If native BarcodeDetector available, use interval-based detection
@@ -477,64 +524,77 @@ export default function CartPageClient() {
   return (
     <main className={[styles.sometypeMono, "p-6"].join(" ")}>
       <h1 className="text-2xl font-semibold mb-4">Cart</h1>
-      <div className="mt-12 mb-4">
-        <button onClick={() => startScanner()} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Scan QR Code</button>
-      </div>    
-      {cart.length === 0 ? (
-        <div>
-          <p>Your cart is empty.</p>
-          <div className="mt-3 pt-4 border-t">
-            <button onClick={() => startScanner()} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Scan QR Code</button>
-          </div>
+      {!cartLoaded ? (
+        <div className="mt-6 flex items-center gap-3">
+          <svg className="h-6 w-6 animate-spin text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          <div className="text-gray-700">Loading cart…</div>
         </div>
       ) : (
-        <div className="space-y-4">
-          <ul>
-            {cart.map((it) => (
-              <li key={it.id} className="flex items-center justify-between py-2 border-b">
-                <div>
-                  <div className="font-medium">{it.name}</div>
-                  <div className="text-sm text-gray-600">${(it.price || 0).toFixed(2)} x {it.quantity || 1}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleRemove(it.id)} className="px-3 py-1 rounded border hover:bg-gray-100">Remove</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 space-y-3 text-right">
-            <div className="flex items-center gap-3 justify-end">
-              <label className="text-sm font-medium">Store credit to apply:</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={String(storeCredit || '')}
-                onChange={(e) => setStoreCredit(Number(e.target.value || 0))}
-                className="w-32 rounded-md border px-2 py-1"
-              />
-            </div>
-
-            <div className="flex justify-between flex-col">
-              {storeCredit > 0 ? (
-                <>
-                    <div className="text-lg font-semibold">Sub-total: ${total.toFixed(2)}</div>  
-                    <div className="text-lg font-semibold">Store credit amount: ${storeCredit.toFixed(2)}</div>  
-                    <div className="text-lg font-semibold">Total: ${totalAfterCredit.toFixed(2)}</div>
-                </>
-              ) : (
-                <div className="text-lg font-semibold">Total: ${total.toFixed(2)}</div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 justify-end">
-              <button onClick={() => { clearCart(); setCart([]); }} className="px-3 py-1 rounded border hover:bg-gray-100">Clear</button>
-              <button onClick={handleCheckout} disabled={loading} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">
-                {loading ? 'Processing…' : 'Checkout'}
-              </button>
+        <>
+          <div className="mt-12 mb-4">
+            <div className="flex gap-3">
+              <button onClick={() => startScanner()} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Scan QR Code</button>
+              <button onClick={() => { setShowAddModal(true); }} className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Add Item Without QR Code</button>
             </div>
           </div>
-          {message && <div className="mt-2 text-sm text-green-600">{message}</div>}
-        </div>
+
+          {cart.length === 0 ? (
+            <div className="mt-8">
+              <p>Your cart is empty.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <ul>
+                {cart.map((it) => (
+                  <li key={it.id} className="flex items-center justify-between py-2 border-b">
+                    <div>
+                      <div className="font-medium">{it.name}</div>
+                      <div className="text-sm text-gray-600">${(it.price || 0).toFixed(2)} x {it.quantity || 1}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleRemove(it.id)} className="px-3 py-1 rounded border hover:bg-gray-100">Remove</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 space-y-3 text-right">
+                <div className="flex items-center gap-3 justify-end">
+                  <label className="text-sm font-medium">Store credit to apply:</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={String(storeCredit || '')}
+                    onChange={(e) => setStoreCredit(Number(e.target.value || 0))}
+                    className="w-32 rounded-md border px-2 py-1"
+                  />
+                </div>
+
+                <div className="flex justify-between flex-col">
+                  {storeCredit > 0 ? (
+                    <>
+                      <div className="text-lg font-semibold">Sub-total: ${total.toFixed(2)}</div>
+                      <div className="text-lg font-semibold">Store credit amount: ${storeCredit.toFixed(2)}</div>
+                      <div className="text-lg font-semibold">Total: ${totalAfterCredit.toFixed(2)}</div>
+                    </>
+                  ) : (
+                    <div className="text-lg font-semibold">Total: ${total.toFixed(2)}</div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 justify-end">
+                  <button onClick={() => { clearCart(); setCart([]); }} className="px-3 py-1 rounded border hover:bg-gray-100">Clear</button>
+                  <button onClick={handleCheckout} disabled={loading} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">
+                    {loading ? 'Processing…' : 'Checkout'}
+                  </button>
+                </div>
+              </div>
+              {message && <div className="mt-2 text-sm text-green-600">{message}</div>}
+            </div>
+          )}
+        </>
       )}
       {waiting && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -565,6 +625,70 @@ export default function CartPageClient() {
           </div>
         </div>
       )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-md p-4 w-full max-w-md">
+            <h3 className="font-semibold mb-2">Add Item (without QR)</h3>
+            <div className="space-y-3 mb-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input name="name" ref={nameInputRef} value={addName} onChange={(e) => setAddName(e.target.value)} className="w-full rounded-md border px-2 py-1" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Price (USD)</label>
+                <input name="listPrice" type="number" step="0.01" value={addListPrice} onChange={(e) => setAddListPrice(e.target.value)} className="w-full rounded-md border px-2 py-1" />
+              </div>
+              <div className="flex items-center gap-3">
+                <input id="add-on-depop" name="onDepop" type="checkbox" checked={addOnDepop} onChange={(e) => setAddOnDepop(e.target.checked)} />
+                <label htmlFor="add-on-depop" className="text-sm">On Depop</label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Category</label>
+                <select name="categories" value={addCategory ?? ''} onChange={(e) => setAddCategory(e.target.value || null)} className="w-full rounded-md border px-2 py-1">
+                  <option value="">(none)</option>
+                  {categories.map((c) => (
+                    <option value={c.name} key={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { closeAddModal(); }} className="px-3 py-1 rounded border">Cancel</button>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                      // Build FormData from controlled inputs (inputs are outside the form element)
+                      const fd = new FormData();
+                      fd.append('name', String(addName || ''));
+                      fd.append('listPrice', String(addListPrice || '0'));
+                      if (addOnDepop) fd.append('onDepop', '1');
+                      if (addCategory) fd.append('categories', String(addCategory));
+                    setAdding(true);
+                    try {
+                      // call server action
+                      const item = await createItemForCartForm(fd);
+                      if (item && item.id) {
+                        addToCart({ id: item.id, name: item.name, price: Number(item.listPrice || 0), quantity: 1 });
+                        setCart(getCart());
+                        setMessage('Item added to cart');
+                        setTimeout(() => setMessage(null), 4000);
+                        // close modal after successful add and clear inputs
+                        closeAddModal();
+                      }
+                    } catch (err) {
+                      console.error('create item (server action) error', err);
+                      setMessage('Failed to create item');
+                    } finally {
+                      setAdding(false);
+                    }
+                  }}>
+                    <input type="hidden" name="_action" value="create" />
+                    <button type="submit" disabled={adding} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500">{adding ? 'Adding…' : 'Add to Cart'}</button>
+                  </form>
+            </div>
+          </div>
+        </div>
+  )}
     </main>
   );
 }

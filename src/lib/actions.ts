@@ -571,6 +571,56 @@ export async function createTransaction(itemIds: string[], storeCreditAmount?: n
     return tx;
 }
 
+// Create a lightweight item for quick add-to-cart flows.
+// Returns minimal item info for client to add to cart.
+export async function createItemForCart(data: { name: string; listPrice: number; onDepop?: boolean; categories?: string | null }) {
+    const { name, listPrice, onDepop, categories } = data;
+    if (!name) throw new Error('Name required');
+    const normalizedPrice = Number(listPrice || 0);
+
+    let existingCategory = null;
+    if (categories) {
+        existingCategory = await prisma.category.findUnique({ where: { name: String(categories) } });
+    }
+
+    const item = await prisma.item.create({
+        data: {
+            name: String(name),
+            listPrice: normalizedPrice,
+            onDepop: Boolean(onDepop || false),
+            ...(existingCategory
+                ? { categories: { connect: { id: existingCategory.id } } }
+                : {}),
+        },
+        select: { id: true, name: true, listPrice: true },
+    });
+
+    // Revalidate items listing
+    try { revalidatePath('/dashboard/items'); } catch (e) {}
+
+    // Convert Decimal to plain number so the returned object is a plain JS object
+    // Next.js client components can't receive Prisma Decimal instances.
+    return {
+        id: item.id,
+        name: item.name,
+        listPrice: Number(item.listPrice ?? 0),
+    };
+}
+
+// Server action that accepts a FormData from a client form and returns the created item.
+export async function createItemForCartForm(formData: FormData) {
+    const name = String(formData.get('name') || '').trim();
+    const listPriceRaw = formData.get('listPrice');
+    const onDepop = Boolean(formData.get('onDepop'));
+    const categories = formData.get('categories') ? String(formData.get('categories')) : null;
+
+    if (!name) throw new Error('Name required');
+    const listPrice = Number(listPriceRaw ?? 0) || 0;
+
+    const item = await createItemForCart({ name, listPrice, onDepop, categories });
+    return item;
+}
+
 export async function processTransaction(formData: FormData) {
     // server action to be used as a form action if desired
     const ids = formData.getAll('itemIds').map((v) => String(v));
