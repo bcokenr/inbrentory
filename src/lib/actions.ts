@@ -695,8 +695,10 @@ export async function getDailySales(
         }
 
         const results: SaleRow[] = [];
-        let cursor = zonedStart;
-        while (cursor <= zonedEnd) {
+        // Iterate using the UTC query bounds and compute the local date key for each UTC cursor.
+        // This avoids double-converting dates when `zonedStart` was already produced by utcToZonedTime.
+        let cursor = queryStartUtc;
+        while (cursor <= queryEndUtc) {
             const key = format(utcToZonedTime(cursor, timeZone), 'yyyy-MM-dd');
             const b = map[key] || { store: 0, depop: 0, total: 0 };
             results.push({ date: key, storeTotal: +(b.store || 0).toFixed(2), depopTotal: +(b.depop || 0).toFixed(2), total: +(b.total || 0).toFixed(2) });
@@ -717,7 +719,9 @@ export async function getDailySales(
             include: { transaction: true },
         });
 
-        const results = computeDailyBucketsFromItems(items, zonedStart, zonedEnd, timeZone);
+    // Pass the UTC query bounds to the JS fallback so it iterates the same UTC instants
+    // and generates local keys using the provided timeZone.
+    const results = computeDailyBucketsFromItems(items, queryStartUtc, queryEndUtc, timeZone);
         return results;
     }
 }
