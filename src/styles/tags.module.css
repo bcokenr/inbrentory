@@ -35,23 +35,46 @@
 }
 
 .label {
-    width: 1.5in;
-    height: 3in;
+    /* Physical printed size: 3in wide x 1.5in tall (landscape)
+       We'll place a rotated inner container sized 1.5in x 3in so the
+       visual/content layout stays vertical while the physical tag prints
+       landscape for your thermal printer. */
+    width: 3in;
+    height: 1.5in;
     box-sizing: border-box;
     border: 1px solid #000;
-    /* optional for testing */
     page-break-inside: avoid;
-    /* ensures each label is a separate “page” */
+    /* center the rotated inner box */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 12pt;
+    overflow: hidden;
+}
+
+.labelInner {
+    /* This inner box has the original portrait dimensions and is rotated
+       so the content remains vertically stacked (name, price, qr). */
+    width: 1.5in;
+    height: 3in;
     display: flex;
     flex-direction: column;
     justify-content: space-around;
     align-items: center;
-    text-align: center;
-    font-size: 12pt;
+    transform: rotate(90deg); /* rotate content to fit landscape outer box */
+    transform-origin: center center;
 }
 
 @media print {
     .label {
         border: none;
+    }
+
+    /* Avoid any printing margins or page-scaling that could alter physical size.
+       You can override page margins via @page rules in your print stylesheet if needed. */
+    @page {
+        size: auto;
+        margin: 0;
     }
 }
