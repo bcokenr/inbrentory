@@ -6,7 +6,7 @@ export async function GET(req: Request, context: any) {
   // Note: Next.js route handlers pass params when using dynamic segments under /app.
   try {
     // If params not provided (edge case), parse from URL
-    const id = params?.id ?? new URL(req.url).pathname.split('/').pop();
+    const id = await params?.id ?? new URL(req.url).pathname.split('/').pop();
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
     const item = await prisma.item.findUnique({ where: { id }, select: { id: true, name: true, listPrice: true, transactionPrice: true } });
