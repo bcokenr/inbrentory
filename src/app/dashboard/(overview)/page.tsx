@@ -20,12 +20,17 @@ export default async function Home({
   const zonedStart = startOfWeek(zonedNow, { weekStartsOn: 1 }); // Monday in tz
   const zonedEnd = endOfWeek(zonedNow, { weekStartsOn: 1 }); // Sunday in tz
 
+  // If the user supplied start/end via query params they are date-only strings
+  // (YYYY-MM-DD). We need to interpret those as wall-time (midnight) in the
+  // configured timezone and convert to UTC instants for DB queries. Use
+  // zonedTimeToUtc on an explicit 'YYYY-MM-DDT00:00:00' string to avoid passing
+  // a local Date object into utcToZonedTime later which would be misinterpreted.
   const start = params.start
-    ? parseLocalDate(params.start)
+    ? zonedTimeToUtc(`${params.start}T00:00:00`, tz)
     : zonedTimeToUtc(zonedStart, tz);
 
   const end = params.end
-    ? parseLocalDate(params.end)
+    ? zonedTimeToUtc(`${params.end}T00:00:00`, tz)
     : zonedTimeToUtc(zonedEnd, tz);
 
   const data = await getDailySales(start, end);
