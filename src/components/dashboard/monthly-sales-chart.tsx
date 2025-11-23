@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { parseISO, format } from "date-fns";
+import styles from '@/styles/home.module.css';
 
 type MonthlyRow = {
   date: string; // YYYY-MM-01
@@ -38,6 +39,27 @@ export function MonthlySalesChart({ data }: Props) {
     }
   };
 
+  function MonthlyTooltip({ active, label, payload }: any) {
+    if (!active || !payload || payload.length === 0) return null;
+    const store = payload.find((p: any) => p.dataKey === 'storeTotal')?.value ?? 0;
+    const depop = payload.find((p: any) => p.dataKey === 'depopTotal')?.value ?? 0;
+    const total = +(Number(store) + Number(depop)).toFixed(2);
+    let title = String(label);
+    try {
+      title = format(parseISO(String(label)), 'MMMM yyyy');
+    } catch (e) {
+      // fallback to raw label
+    }
+    return (
+      <div className={[styles.sometypeMono, "bg-white p-2 rounded shadow"].join(" ")}>
+        <div className="font-semibold">{title}</div>
+        <div className="text-sm">In-store: ${store.toFixed(2)}</div>
+        <div className="text-sm">Depop: ${depop.toFixed(2)}</div>
+        <div className="border-t mt-1 pt-1 font-medium">Total: ${total.toFixed(2)}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-72">
       <ResponsiveContainer>
@@ -47,20 +69,7 @@ export function MonthlySalesChart({ data }: Props) {
           <XAxis dataKey="date" tickFormatter={tickFormatter} />
 
           <YAxis />
-          <Tooltip
-            labelFormatter={(date) => {
-              try {
-                return format(parseISO(String(date)), "MMMM yyyy");
-              } catch (e) {
-                return String(date);
-              }
-            }}
-            // Use the provided `name` (series name) to map to clearer labels
-            formatter={(value: any, name: any) => {
-              const label = name === 'Depop' ? 'Depop total' : name === 'In-store' ? 'In-store total' : String(name);
-              return [`$${(value as number).toFixed(2)}`, label];
-            }}
-          />
+          <Tooltip content={<MonthlyTooltip />} />
 
           {/* Bottom portion: in-store sales (lighter green) */}
           <Bar dataKey="storeTotal" stackId="a" fill="#34D399" name="In-store" />

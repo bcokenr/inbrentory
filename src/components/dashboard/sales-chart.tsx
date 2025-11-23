@@ -10,20 +10,21 @@ import {
   ResponsiveContainer
 } from "recharts";
 import { format, parseISO } from "date-fns";
+import styles from '@/styles/home.module.css';
 
 type DailyRow = { date: string; storeTotal: number; depopTotal: number; total: number };
 type Props = {
   data: DailyRow[];
 };
 
-function DailyTooltip({ active, label, payload }: any) {
+  function DailyTooltip({ active, label, payload }: any) {
   if (!active || !payload || payload.length === 0) return null;
   // payload contains entries for each series (In-store, Depop)
   const store = payload.find((p: any) => p.dataKey === 'storeTotal')?.value ?? 0;
   const depop = payload.find((p: any) => p.dataKey === 'depopTotal')?.value ?? 0;
   const total = +(Number(store) + Number(depop)).toFixed(2);
   return (
-    <div className="bg-white p-2 rounded shadow">
+    <div className={[styles.sometypeMono, "bg-white p-2 rounded shadow"].join(" ")}>
       <div className="font-semibold">{label}</div>
       <div className="text-sm">In-store: ${store.toFixed(2)}</div>
       <div className="text-sm">Depop: ${depop.toFixed(2)}</div>
