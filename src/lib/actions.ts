@@ -12,8 +12,9 @@ import { format, addDays, startOfDay, endOfDay, startOfYear, endOfYear } from 'd
 import { DEFAULT_TZ } from '@/config/timezone';
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 import { computeMonthlyBucketsFromItems, type MonthlyRow } from './compute-monthly-buckets';
+import { computeDailyBucketsFromItems } from './compute-daily-buckets';
 
-type SaleRow = { date: string; total: number };
+type SaleRow = { date: string; storeTotal: number; depopTotal: number; total: number };
 // DEFAULT_TZ is provided by src/config/timezone.ts
 
 export async function authenticate(
@@ -647,45 +648,18 @@ export async function getDailySales(
     const queryStartUtc = zonedTimeToUtc(startOfRange, timeZone);
     const queryEndUtc = zonedTimeToUtc(endOfRange, timeZone);
 
-    // 2) Query transactions from DB that fall in that UTC window
-    const transactions = await prisma.transaction.findMany({
+    const items: any[] = await (prisma.item as any).findMany({
         where: {
-            createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+            transaction: {
+                is: {
+                    createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+                },
+            },
         },
-        select: {
-            id: true,
-            createdAt: true,
-            total: true,
-        },
+        include: { transaction: true },
     });
 
-    // 3) Build buckets keyed by local date (in the requested timezone)
-    const buckets: Record<string, number> = {};
-
-    const toLocalDateKey = (d: Date) => {
-        // convert to zoned time, then format YYYY-MM-DD using date-fns format (local in timezone)
-        const zoned = utcToZonedTime(d, timeZone);
-        return format(zoned, 'yyyy-MM-dd');
-    };
-
-    for (const t of transactions) {
-        // Use the correct timestamp on transaction (createdAt / transactionDate)
-        const key = toLocalDateKey(t.createdAt);
-        buckets[key] = (buckets[key] || 0) + Number(t.total ?? 0);
-    }
-
-    // 4) Fill in the full date range so empty days appear with total 0
-    // Build an array of dates from zonedStart to zonedEnd inclusive.
-    const results: SaleRow[] = [];
-    // We'll iterate in the timezone domain: start with zonedStart (already computed)
-    let cursor = zonedStart;
-    // Use addDays from date-fns which operates on plain Date objects
-    while (cursor <= zonedEnd) {
-        const key = format(cursor, 'yyyy-MM-dd'); // this uses the zoned local date
-        results.push({ date: key, total: +(buckets[key] || 0) });
-        cursor = addDays(cursor, 1);
-    }
-
+    const results = computeDailyBucketsFromItems(items, zonedStart, zonedEnd, timeZone);
     return results;
 }
 
