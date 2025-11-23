@@ -38,7 +38,7 @@ export default async function Home({
   return (
     <>
       <DateRangeChart data={data} />
-      <div className="pt-6">
+      <div className="pt-6 mt-8">
         <h2 className={[styles.sometypeMono, "text-xl font-semibold"].join(" ")}>Sales (Monthly)</h2>
         <MonthlySalesChart data={monthly} />
       </div>
