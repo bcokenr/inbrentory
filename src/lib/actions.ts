@@ -11,6 +11,7 @@ import { put, del } from '@vercel/blob';
 import { format, addDays, startOfDay, endOfDay, startOfYear, endOfYear } from 'date-fns';
 import { DEFAULT_TZ } from '@/config/timezone';
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { computeMonthlyBucketsFromItems, type MonthlyRow } from './compute-monthly-buckets';
 
 type SaleRow = { date: string; total: number };
 // DEFAULT_TZ is provided by src/config/timezone.ts
@@ -688,14 +689,6 @@ export async function getDailySales(
     return results;
 }
 
-export type MonthlyRow = {
-    date: string; // YYYY-MM-01
-    storeTotal: number; // in-store (soldOnDepop = false)
-    depopTotal: number; // depop (soldOnDepop = true)
-    total: number; // storeTotal + depopTotal
-    count: number; // number of items sold in that month
-};
-
 export async function getMonthlySales(
     year: number = new Date().getFullYear(),
     timeZone: string = DEFAULT_TZ
@@ -732,42 +725,8 @@ export async function getMonthlySales(
         },
     });
 
-    const buckets: Record<string, { store: number; depop: number; count: number }> = {};
-
-    const toMonthKey = (d: Date) => {
-        const zoned = utcToZonedTime(d, timeZone);
-        return format(zoned, 'yyyy-MM-01');
-    };
-
-    for (const it of items) {
-        const txDate = (it as any).transaction?.createdAt;
-        if (!txDate) continue;
-        const key = toMonthKey(txDate);
-        const price = Number((it as any).transactionPrice ?? (it as any).discountedListPrice ?? (it as any).listPrice ?? 0) || 0;
-        if (!buckets[key]) buckets[key] = { store: 0, depop: 0, count: 0 };
-        if ((it as any).soldOnDepop) {
-            buckets[key].depop += price;
-        } else {
-            buckets[key].store += price;
-        }
-        buckets[key].count += 1;
-    }
-
-    const results: MonthlyRow[] = [];
-    for (let m = 0; m < 12; m++) {
-        const dt = new Date(year, m, 1);
-        const key = format(utcToZonedTime(dt, timeZone), 'yyyy-MM-01');
-        const b = buckets[key] || { store: 0, depop: 0, count: 0 };
-        const storeTotal = +(b.store || 0).toFixed(2);
-        const depopTotal = +(b.depop || 0).toFixed(2);
-        results.push({
-            date: key,
-            storeTotal,
-            depopTotal,
-            total: +(storeTotal + depopTotal).toFixed(2),
-            count: b.count || 0,
-        });
-    }
-
+    // Delegate to a pure helper so we can unit-test the bucketing logic.
+    const results = await computeMonthlyBucketsFromItems(items, year, timeZone);
     return results;
 }
+
