@@ -648,19 +648,78 @@ export async function getDailySales(
     const queryStartUtc = zonedTimeToUtc(startOfRange, timeZone);
     const queryEndUtc = zonedTimeToUtc(endOfRange, timeZone);
 
-    const items: any[] = await (prisma.item as any).findMany({
-        where: {
-            transaction: {
-                is: {
-                    createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+    // Try an optimized DB-side aggregation using Postgres window functions.
+    // If this fails (non-Postgres or permission issues), fall back to the
+    // previous item-fetch + in-memory bucketing implementation.
+    try {
+        const rows: Array<{ day: string; depop_total: string | number; store_total: string | number; total: string | number }> = await prisma.$queryRaw`
+            WITH it AS (
+              SELECT
+                i.id,
+                i."transactionId",
+                COALESCE(i."transactionPrice", i."discountedListPrice", i."listPrice", 0)::numeric AS item_price,
+                t."storeCreditAmountApplied"::numeric AS storecredit,
+                t."createdAt" AS created_at,
+                i."soldOnDepop"
+              FROM "Item" i
+              JOIN "Transaction" t ON t.id = i."transactionId"
+              WHERE t."createdAt" >= ${queryStartUtc} AND t."createdAt" <= ${queryEndUtc}
+            ),
+            it2 AS (
+              SELECT id, "transactionId", item_price, storecredit, created_at, "soldOnDepop",
+                SUM(item_price) OVER (PARTITION BY "transactionId") AS tx_total
+              FROM it
+            ),
+            net AS (
+              SELECT timezone(${timeZone}, created_at) AS local_ts, "soldOnDepop",
+                CASE WHEN tx_total > 0 THEN GREATEST(item_price - (COALESCE(storecredit,0) * (item_price / tx_total)), 0) ELSE item_price END AS net_price
+              FROM it2
+            )
+            SELECT to_char(local_ts, 'YYYY-MM-DD') AS day,
+              SUM(CASE WHEN "soldOnDepop" THEN net_price ELSE 0 END)::numeric(12,2) AS depop_total,
+              SUM(CASE WHEN NOT "soldOnDepop" THEN net_price ELSE 0 END)::numeric(12,2) AS store_total,
+              SUM(net_price)::numeric(12,2) AS total
+            FROM net
+            GROUP BY day
+            ORDER BY day;
+        `;
+
+        // Map results into a dictionary for quick lookup, coercing to numbers
+        const map: Record<string, { store: number; depop: number; total: number }> = {};
+        for (const r of rows) {
+            map[String(r.day)] = {
+                store: Number(r.store_total ?? 0),
+                depop: Number(r.depop_total ?? 0),
+                total: Number(r.total ?? 0),
+            };
+        }
+
+        const results: SaleRow[] = [];
+        let cursor = zonedStart;
+        while (cursor <= zonedEnd) {
+            const key = format(utcToZonedTime(cursor, timeZone), 'yyyy-MM-dd');
+            const b = map[key] || { store: 0, depop: 0, total: 0 };
+            results.push({ date: key, storeTotal: +(b.store || 0).toFixed(2), depopTotal: +(b.depop || 0).toFixed(2), total: +(b.total || 0).toFixed(2) });
+            cursor = addDays(cursor, 1);
+        }
+
+        return results;
+    } catch (err) {
+        // Fallback: previous JS-based approach (less efficient)
+        const items: any[] = await (prisma.item as any).findMany({
+            where: {
+                transaction: {
+                    is: {
+                        createdAt: { gte: queryStartUtc, lte: queryEndUtc },
+                    },
                 },
             },
-        },
-        include: { transaction: true },
-    });
+            include: { transaction: true },
+        });
 
-    const results = computeDailyBucketsFromItems(items, zonedStart, zonedEnd, timeZone);
-    return results;
+        const results = computeDailyBucketsFromItems(items, zonedStart, zonedEnd, timeZone);
+        return results;
+    }
 }
 
 export async function getMonthlySales(
