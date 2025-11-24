@@ -717,14 +717,29 @@ export async function getDailySales(
         }
 
         const results: SaleRow[] = [];
-        // Iterate using the UTC query bounds and compute the local date key for each UTC cursor.
-        // This avoids double-converting dates when `zonedStart` was already produced by utcToZonedTime.
-        let cursor = queryStartUtc;
-        while (cursor <= queryEndUtc) {
-            const key = format(utcToZonedTime(cursor, timeZone), 'yyyy-MM-dd');
+        // Iterate by local-day in the requested timezone to avoid duplication around DST
+        // transitions (iterating fixed UTC instants can map two different UTC days to the
+        // same local date when offsets change).
+        let localCursor = startOfRange;
+        let lastKey: string | null = null;
+        while (localCursor <= endOfRange) {
+            // Compute the key as the local date string in the requested timezone.
+            // We convert the local-midnight instant to UTC and back to the zone to be safe
+            // about Date object representations.
+            const utcForLocalMidnight = zonedTimeToUtc(localCursor, timeZone);
+            const key = format(utcToZonedTime(utcForLocalMidnight, timeZone), 'yyyy-MM-dd');
+            // Defensive: skip if this key is the same as the previous one (can happen
+            // around DST boundaries where two different UTC instants map to the same
+            // local date).
+            if (key === lastKey) {
+                localCursor = addDays(localCursor, 1);
+                continue;
+            }
+            lastKey = key;
+
             const b = map[key] || { store: 0, depop: 0, total: 0 };
             results.push({ date: key, storeTotal: +(b.store || 0).toFixed(2), depopTotal: +(b.depop || 0).toFixed(2), total: +(b.total || 0).toFixed(2) });
-            cursor = addDays(cursor, 1);
+            localCursor = addDays(localCursor, 1);
         }
 
         if (shouldLog) {
