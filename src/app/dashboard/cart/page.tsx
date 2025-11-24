@@ -11,6 +11,7 @@ export default function CartPageClient() {
   const [cartLoaded, setCartLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageVariant, setMessageVariant] = useState<'success' | 'error' | null>(null);
   const [storeCredit, setStoreCredit] = useState<number>(0);
   const [waiting, setWaiting] = useState(false);
   const [waitingCheckoutId, setWaitingCheckoutId] = useState<string | null>(null);
@@ -42,6 +43,21 @@ export default function CartPageClient() {
     setCart(getCart());
     // mark cart as loaded so we don't flash empty-state UI during initial render
     setCartLoaded(true);
+    // listen for cart helper messages (e.g., item already in cart)
+    function onCartMessage(e: Event) {
+      const detail = (e as CustomEvent)?.detail;
+      if (!detail) return;
+      setMessage(detail.message || null);
+      setMessageVariant(detail.variant || 'error');
+      setTimeout(() => {
+        setMessage(null);
+        setMessageVariant(null);
+      }, 4000);
+    }
+    window.addEventListener('inbrentory:cart-message', onCartMessage as EventListener);
+    return () => {
+      window.removeEventListener('inbrentory:cart-message', onCartMessage as EventListener);
+    };
   }, []);
 
   useEffect(() => {
@@ -100,6 +116,7 @@ export default function CartPageClient() {
       const body = await res.json();
       if (!res.ok) {
         setMessage(body?.error || 'Failed to create terminal checkout');
+        setMessageVariant('error');
         setLoading(false);
         return;
       }
@@ -107,6 +124,7 @@ export default function CartPageClient() {
       const checkoutId = body?.checkoutId;
       if (!checkoutId) {
         setMessage('No checkout id returned from Square');
+        setMessageVariant('error');
         setLoading(false);
         return;
       }
@@ -120,6 +138,7 @@ export default function CartPageClient() {
     } catch (e) {
       console.error(e);
       setMessage('Failed to process transaction');
+      setMessageVariant('error');
     } finally {
       setLoading(false);
     }
@@ -149,8 +168,9 @@ export default function CartPageClient() {
             clearCart();
             setCart([]);
             setMessage('Payment completed');
+            setMessageVariant('success');
             // auto-dismiss toast after 5s
-            setTimeout(() => setMessage(null), 5000);
+            setTimeout(() => { setMessage(null); setMessageVariant(null); }, 5000);
             return;
           }
         }
@@ -539,11 +559,18 @@ export default function CartPageClient() {
         return;
       }
       const item = await res.json();
-      // Add to cart using addToCart
+      // Add to cart using addToCart if not already purchased
+      if (item.transaction) {
+        setMessage('Item has already been purchased');
+        setMessageVariant('error');
+        stopScanner();
+        return;
+      }
       addToCart({ id: item.id, name: item.name, price: Number(item.listPrice ?? item.transactionPrice ?? 0), quantity: 1 });
       setCart(getCart());
       setMessage('Item added to cart');
-      setTimeout(() => setMessage(null), 4000);
+      setMessageVariant('success');
+      setTimeout(() => { setMessage(null); setMessageVariant(null); }, 4000);
     } catch (e) {
       console.error('Fetch item error', e);
       setScanError('Failed to fetch item');
@@ -622,7 +649,11 @@ export default function CartPageClient() {
                   </button>
                 </div>
               </div>
-              {message && <div className="mt-2 text-sm text-green-600">{message}</div>}
+              {message && (
+                <div className={`mt-2 text-sm ${messageVariant === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                  {message}
+                </div>
+              )}
             </div>
           )}
         </>
@@ -702,13 +733,15 @@ export default function CartPageClient() {
                     addToCart({ id: item.id, name: item.name, price: Number(item.listPrice || 0), quantity: 1 });
                     setCart(getCart());
                     setMessage('Item added to cart');
-                    setTimeout(() => setMessage(null), 4000);
+                    setMessageVariant('success');
+                    setTimeout(() => { setMessage(null); setMessageVariant(null); }, 4000);
                     // close modal after successful add and clear inputs
                     closeAddModal();
                   }
                 } catch (err) {
                   console.error('create item (server action) error', err);
                   setMessage('Failed to create item');
+                  setMessageVariant('error');
                 } finally {
                   setAdding(false);
                 }

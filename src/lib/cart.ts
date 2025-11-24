@@ -42,7 +42,13 @@ export function addToCart(item: CartItem) {
   const cart = getCart();
   const existing = cart.find((c) => c.id === item.id);
   if (existing) {
-    existing.quantity = (existing.quantity || 1) + (item.quantity || 1);
+    // Instead of incrementing quantity, notify the UI that the item is already in the cart
+    try {
+      window.dispatchEvent(new CustomEvent('inbrentory:cart-message', { detail: { message: `${item.name} is already in cart`, variant: 'error' } }));
+    } catch (e) {
+      // ignore
+    }
+    return;
   } else {
     cart.push({ ...item, quantity: item.quantity ?? 1 });
   }
