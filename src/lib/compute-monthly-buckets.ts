@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz';
+import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 import { DEFAULT_TZ } from '../config/timezone';
 
 export type MonthlyRow = {
@@ -54,8 +54,14 @@ export async function computeMonthlyBucketsFromItems(
 
   const results: MonthlyRow[] = [];
   for (let m = 0; m < 12; m++) {
-    const dt = new Date(year, m, 1);
-    const key = format(utcToZonedTime(dt, timeZone), 'yyyy-MM-01');
+    // Construct the local-month midnight in the requested timezone and convert
+    // it to UTC before formatting back into the zone. This avoids depending on
+    // the server runtime timezone when creating month keys.
+  const monthStr = `${year}-${String(m + 1).padStart(2, '0')}-01T00:00:00`;
+  // Pass the ISO string to zonedTimeToUtc so it's interpreted as local midnight in the
+  // requested timezone (not in the server process timezone).
+  const utcInstant = zonedTimeToUtc(monthStr, timeZone);
+  const key = format(utcToZonedTime(utcInstant, timeZone), 'yyyy-MM-01');
     const b = buckets[key] || { store: 0, depop: 0, count: 0 };
     const storeTotal = +(b.store || 0).toFixed(2);
     const depopTotal = +(b.depop || 0).toFixed(2);

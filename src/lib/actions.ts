@@ -754,19 +754,16 @@ export async function getMonthlySales(
     year: number = new Date().getFullYear(),
     timeZone: string = DEFAULT_TZ
 ): Promise<MonthlyRow[]> {
-    // Build start/end for the year in the requested timezone
-    const yearStart = startOfYear(new Date(year, 0, 1));
-    const yearEnd = endOfYear(new Date(year, 0, 1));
+    // Build start/end for the year in the requested timezone as local midnights,
+    // then convert those local instants to UTC for querying the DB. This avoids
+    // relying on the server runtime timezone when constructing the year bounds.
+    // Use ISO strings so zonedTimeToUtc interprets them in the requested timezone
+    // rather than relying on the server process timezone.
+    const localYearStartStr = `${year}-01-01T00:00:00`;
+    const localYearEndStr = `${year}-12-31T23:59:59.999`;
 
-    // Convert to zoned start/end and then to UTC for DB query
-    const zonedStart = utcToZonedTime(yearStart, timeZone);
-    const zonedEnd = utcToZonedTime(yearEnd, timeZone);
-
-    const startOfRange = startOfDay(zonedStart);
-    const endOfRange = endOfDay(zonedEnd);
-
-    const queryStartUtc = zonedTimeToUtc(startOfRange, timeZone);
-    const queryEndUtc = zonedTimeToUtc(endOfRange, timeZone);
+    const queryStartUtc = zonedTimeToUtc(localYearStartStr, timeZone);
+    const queryEndUtc = zonedTimeToUtc(localYearEndStr, timeZone);
 
     // Query items that are associated with a transaction in the year window.
     // We'll attribute each item's price (transactionPrice || discountedListPrice || listPrice)
