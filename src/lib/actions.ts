@@ -648,22 +648,6 @@ export async function getDailySales(
     const queryStartUtc = zonedTimeToUtc(startOfRange, timeZone);
     const queryEndUtc = zonedTimeToUtc(endOfRange, timeZone);
 
-    // Conditional logging: enable via env var or always log in production.
-    const shouldLog = process.env.INBRENTORY_DEBUG_DAILY_SALES === '1' || process.env.NODE_ENV === 'production';
-    if (shouldLog) {
-        try {
-            console.info('[getDailySales] request', {
-                start: start.toISOString(),
-                end: end.toISOString(),
-                timeZone,
-                queryStartUtc: queryStartUtc.toISOString(),
-                queryEndUtc: queryEndUtc.toISOString(),
-            });
-        } catch (e) {
-            // ignore logging errors
-        }
-    }
-
     // Try an optimized DB-side aggregation using Postgres window functions.
     // If this fails (non-Postgres or permission issues), fall back to the
     // previous item-fetch + in-memory bucketing implementation.
@@ -710,11 +694,7 @@ export async function getDailySales(
             };
         }
 
-        if (shouldLog) {
-            try {
-                console.info('[getDailySales] db rows', { count: rows.length, days: Object.keys(map) });
-            } catch (e) {}
-        }
+        // no-op: debug logs removed
 
         const results: SaleRow[] = [];
         // Iterate by local-day in the requested timezone to avoid duplication around DST
@@ -742,11 +722,7 @@ export async function getDailySales(
             localCursor = addDays(localCursor, 1);
         }
 
-        if (shouldLog) {
-            try {
-                console.info('[getDailySales] returning', { count: results.length, dates: results.map((r) => r.date) });
-            } catch (e) {}
-        }
+        // no-op: debug logs removed
 
         return results;
     } catch (err) {
@@ -764,19 +740,11 @@ export async function getDailySales(
 
     // Pass the UTC query bounds to the JS fallback so it iterates the same UTC instants
     // and generates local keys using the provided timeZone.
-    if (shouldLog) {
-        try {
-            console.info('[getDailySales] fallback items fetched', { count: items.length });
-        } catch (e) {}
-    }
+    // no-op: debug logs removed
 
     const results = computeDailyBucketsFromItems(items, queryStartUtc, queryEndUtc, timeZone);
 
-    if (shouldLog) {
-        try {
-            console.info('[getDailySales] fallback returning', { count: results.length, dates: results.map((r) => r.date) });
-        } catch (e) {}
-    }
+    // no-op: debug logs removed
 
     return results;
     }
