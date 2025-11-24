@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { parseISO, addDays, startOfWeek, endOfWeek, format } from 'date-fns';
+import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { DEFAULT_TZ } from '@/config/timezone';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 export function DateRangePicker() {
@@ -17,22 +19,25 @@ export function DateRangePicker() {
     let startDate: Date;
     let endDate: Date;
 
+    // Interpret date-only params as wall-time dates in the configured timezone
     if (start) {
-      startDate = parseISO(start);
+      // create a zoned Date representing local midnight in DEFAULT_TZ for the provided date string
+      startDate = utcToZonedTime(zonedTimeToUtc(`${start}T00:00:00`, DEFAULT_TZ), DEFAULT_TZ);
     } else {
-      startDate = startOfWeek(new Date(), { weekStartsOn: 1 });
+      startDate = startOfWeek(utcToZonedTime(new Date(), DEFAULT_TZ), { weekStartsOn: 1 });
     }
 
     if (end) {
-      endDate = parseISO(end);
+      endDate = utcToZonedTime(zonedTimeToUtc(`${end}T00:00:00`, DEFAULT_TZ), DEFAULT_TZ);
     } else {
-      endDate = endOfWeek(new Date(), { weekStartsOn: 1 });
+      endDate = endOfWeek(utcToZonedTime(new Date(), DEFAULT_TZ), { weekStartsOn: 1 });
     }
 
-    const newStart = addDays(startDate, weeks * 7);
-    const newEnd = addDays(endDate, weeks * 7);
+  const newStart = addDays(startDate, weeks * 7);
+  const newEnd = addDays(endDate, weeks * 7);
 
-    router.push(`?start=${formatDate(newStart)}&end=${formatDate(newEnd)}`);
+  // Format using the zoned Date (format will render the correct yyyy-MM-dd for the zone)
+  router.push(`?start=${format(newStart, 'yyyy-MM-dd')}&end=${format(newEnd, 'yyyy-MM-dd')}`);
   };
 
   return (
