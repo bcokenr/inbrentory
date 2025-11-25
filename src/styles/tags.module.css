@@ -69,9 +69,9 @@
 }
 
 @media print {
-    .label {
+    /* .label {
         border: none;
-    }
+    } */
 
     /* Avoid any printing margins or page-scaling that could alter physical size.
        You can override page margins via @page rules in your print stylesheet if needed. */
