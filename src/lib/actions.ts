@@ -788,3 +788,82 @@ export async function getMonthlySales(
     return results;
 }
 
+export type WeeklyRow = {
+    date: string; // Sunday date YYYY-MM-DD (week end)
+    storeTotal: number;
+    depopTotal: number;
+    total: number;
+};
+
+export async function getWeeklySales(
+    year: number,
+    month: number, // 1-12
+    timeZone: string = DEFAULT_TZ
+): Promise<WeeklyRow[]> {
+    // Build the month start/end as ISO strings interpreted in the requested timezone
+    const monthStr = `${String(year)}-${String(month).padStart(2, '0')}`;
+    const monthStartUtc = zonedTimeToUtc(`${monthStr}-01T00:00:00`, timeZone);
+    // find last day of month by advancing to next month and subtracting a ms
+    const nextMonth = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
+    const monthEndUtc = zonedTimeToUtc(`${nextMonth}-01T00:00:00`, timeZone);
+
+    // Convert to zoned Date objects so we can iterate local days
+    const monthStartZoned = utcToZonedTime(monthStartUtc, timeZone);
+    const monthEndZoned = utcToZonedTime(new Date(monthEndUtc.getTime() - 1), timeZone);
+
+    // Collect all Sundays that fall inside the month's boundaries (week end inside month)
+    const sundays: Date[] = [];
+    let cursor = monthStartZoned;
+    while (cursor <= monthEndZoned) {
+        if (cursor.getDay() === 0) {
+            // copy
+            sundays.push(new Date(cursor));
+        }
+        cursor = addDays(cursor, 1);
+    }
+
+    // If the month starts with a Sunday earlier than the first day (rare), ensure we include it
+    // (edge cases handled by loop above)
+
+    if (sundays.length === 0) {
+        // No Sundays in month? Shouldn't happen, but return empty
+        return [];
+    }
+
+    // Overall range to request daily sales: from Monday of the first week to Sunday of last week
+    const firstSunday = sundays[0];
+    const lastSunday = sundays[sundays.length - 1];
+    const overallStartLocal = addDays(firstSunday, -6); // Monday
+    const overallEndLocal = lastSunday; // Sunday
+
+    const queryStartUtc = zonedTimeToUtc(startOfDay(overallStartLocal), timeZone);
+    const queryEndUtc = zonedTimeToUtc(endOfDay(overallEndLocal), timeZone);
+
+    // Reuse getDailySales to get daily buckets across the full span
+    const daily = await getDailySales(queryStartUtc, queryEndUtc, timeZone);
+    // Map daily totals by date
+    const dailyMap: Record<string, { store: number; depop: number; total: number }> = {};
+    for (const d of daily) {
+        dailyMap[d.date] = { store: d.storeTotal, depop: d.depopTotal, total: d.total };
+    }
+
+    const results: WeeklyRow[] = [];
+    for (const sun of sundays) {
+        let store = 0;
+        let depop = 0;
+        let total = 0;
+        // Sum Monday (sun-6) through Sunday (sun)
+        for (let i = -6; i <= 0; i++) {
+            const day = addDays(sun, i);
+            const key = format(utcToZonedTime(zonedTimeToUtc(startOfDay(day), timeZone), timeZone), 'yyyy-MM-dd');
+            const v = dailyMap[key] || { store: 0, depop: 0, total: 0 };
+            store += v.store;
+            depop += v.depop;
+            total += v.total;
+        }
+        results.push({ date: format(utcToZonedTime(zonedTimeToUtc(startOfDay(sun), timeZone), timeZone), 'yyyy-MM-dd'), storeTotal: +(store).toFixed(2), depopTotal: +(depop).toFixed(2), total: +(total).toFixed(2) });
+    }
+
+    return results;
+}
+
