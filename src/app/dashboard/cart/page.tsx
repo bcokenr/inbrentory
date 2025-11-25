@@ -560,7 +560,7 @@ export default function CartPageClient() {
       }
       const item = await res.json();
       // Add to cart using addToCart if not already purchased
-      if (item.transaction) {
+      if (item.transaction || item.transactionPrice) {
         setMessage('Item has already been purchased');
         setMessageVariant('error');
         stopScanner();
