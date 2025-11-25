@@ -563,14 +563,18 @@ export default function CartPageClient() {
       if (item.transaction || item.transactionPrice) {
         setMessage('Item has already been purchased');
         setMessageVariant('error');
+        setTimeout(() => { setMessage(null); setMessageVariant(null); }, 4000);
         stopScanner();
         return;
       }
-      addToCart({ id: item.id, name: item.name, price: Number(item.listPrice ?? item.transactionPrice ?? 0), quantity: 1 });
-      setCart(getCart());
-      setMessage('Item added to cart');
-      setMessageVariant('success');
-      setTimeout(() => { setMessage(null); setMessageVariant(null); }, 4000);
+      const addedToCart = addToCart({ id: item.id, name: item.name, price: Number(item.listPrice ?? item.transactionPrice ?? 0), quantity: 1 });
+      
+      if (addedToCart) {
+        setCart(getCart());
+        setMessage('Item added to cart');
+        setMessageVariant('success');
+        setTimeout(() => { setMessage(null); setMessageVariant(null); }, 4000);
+      }
     } catch (e) {
       console.error('Fetch item error', e);
       setScanError('Failed to fetch item');

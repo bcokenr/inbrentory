@@ -48,12 +48,13 @@ export function addToCart(item: CartItem) {
     } catch (e) {
       // ignore
     }
-    return;
+    return false;
   } else {
     cart.push({ ...item, quantity: item.quantity ?? 1 });
   }
   save(cart);
   emitUpdate();
+  return true;
 }
 
 export function removeFromCart(id: string) {
