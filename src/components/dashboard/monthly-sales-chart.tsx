@@ -26,17 +26,26 @@ type Props = {
 
 export function MonthlySalesChart({ data }: Props) {
   // helper to format x-axis ticks to show month and count underneath
-  const tickFormatter = (date: string | number) => {
+  // Recharts XAxis renders ticks as SVG <text>. Use a custom tick renderer
+  // that returns tspan elements for multi-line labels (month on top, total below).
+  const CustomTick = (props: any) => {
+    const { x, y, payload } = props;
+    const value = String(payload?.value ?? '');
+    let line1 = value;
+    let line2 = '';
     try {
-      const d = parseISO(String(date));
-      const monthLabel = format(d, "MMM");
-      const entry = data.find((x) => x.date === String(date));
+      const d = parseISO(value);
+      line1 = format(d, 'MMM');
+      const entry = data.find((x) => x.date === value);
       const total = entry ? entry.total : 0;
-      // Recharts accepts multiline tick labels using `\n`
-      return `${monthLabel}\n\$${total}`;
-    } catch (e) {
-      return String(date);
-    }
+      line2 = `$${total}`;
+    } catch (e) {}
+    return (
+      <text x={x} y={y} textAnchor="middle" fontSize={16} className={styles.sometypeMono} dominantBaseline="hanging">
+        <tspan x={x} dy={0}>{line1}</tspan>
+        <tspan x={x} dy={20}>{line2}</tspan>
+      </text>
+    );
   };
 
   function MonthlyTooltip({ active, label, payload }: any) {
@@ -47,15 +56,13 @@ export function MonthlySalesChart({ data }: Props) {
     let title = String(label);
     try {
       title = format(parseISO(String(label)), 'MMMM yyyy');
-    } catch (e) {
-      // fallback to raw label
-    }
+    } catch (e) {}
     return (
-      <div className={[styles.sometypeMono, "bg-white p-2 rounded shadow"].join(" ")}>
-        <div className="font-semibold">{title}</div>
-        <div className="text-sm">In-store: ${store.toFixed(2)}</div>
-        <div className="text-sm">Depop: ${depop.toFixed(2)}</div>
-        <div className="border-t mt-1 pt-1 font-medium">Total: ${total.toFixed(2)}</div>
+      <div className={[styles.sometypeMono, "bg-white p-3 rounded shadow"].join(" ")}>
+        <div className="font-semibold text-lg">{title}</div>
+        <div className="text-base mt-1">In-store: ${store.toFixed(2)}</div>
+        <div className="text-base">Depop: ${depop.toFixed(2)}</div>
+        <div className="border-t mt-2 pt-2 font-medium text-base">Total: ${total.toFixed(2)}</div>
       </div>
     );
   }
@@ -63,10 +70,10 @@ export function MonthlySalesChart({ data }: Props) {
   return (
     <div className="w-full h-72">
       <ResponsiveContainer>
-        <BarChart data={data}>
+          <BarChart data={data} margin={{ bottom: 40 }}>
           <CartesianGrid strokeDasharray="3 3" />
 
-          <XAxis dataKey="date" tickFormatter={tickFormatter} />
+          <XAxis dataKey="date" tick={CustomTick} />
 
           <YAxis />
           <Tooltip content={<MonthlyTooltip />} />

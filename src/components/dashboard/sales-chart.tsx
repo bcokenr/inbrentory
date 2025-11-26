@@ -24,11 +24,11 @@ type Props = {
   const depop = payload.find((p: any) => p.dataKey === 'depopTotal')?.value ?? 0;
   const total = +(Number(store) + Number(depop)).toFixed(2);
   return (
-    <div className={[styles.sometypeMono, "bg-white p-2 rounded shadow"].join(" ")}>
-      <div className="font-semibold">{label}</div>
-      <div className="text-sm">In-store: ${store.toFixed(2)}</div>
-      <div className="text-sm">Depop: ${depop.toFixed(2)}</div>
-      <div className="border-t mt-1 pt-1 font-medium">Total: ${total.toFixed(2)}</div>
+    <div className={[styles.sometypeMono, "bg-white p-4 rounded shadow"].join(" ")}>
+      <div className="font-semibold text-xl">{label}</div>
+      <div className="text-lg mt-1">In-store: ${store.toFixed(2)}</div>
+      <div className="text-lg">Depop: ${depop.toFixed(2)}</div>
+      <div className="border-t mt-2 pt-2 font-medium text-lg">Total: ${total.toFixed(2)}</div>
     </div>
   );
 }
@@ -37,14 +37,21 @@ export function SalesChart({ data }: Props) {
   return (
     <div className="w-full h-72">
       <ResponsiveContainer>
-        <BarChart data={data}>
+          <BarChart data={data} margin={{ bottom: 40 }}>
           <CartesianGrid strokeDasharray="3 3" />
 
           <XAxis
             dataKey="date"
-            tickFormatter={(date) => {
-              const d = parseISO(date);
-              return `${format(d, "EEE")}\n${format(d, "MM/dd")}`;
+            tick={(props) => {
+              const { x, y, payload } = props as any;
+              const date = payload?.value;
+              const d = parseISO(String(date));
+              return (
+                <text x={x} y={y} textAnchor="middle" fontSize={16} className={styles.sometypeMono} fill="#374151" dominantBaseline="hanging">
+                  <tspan x={x} dy={0} className="uppercase font-semibold">{format(d, "EEE")}</tspan>
+                  <tspan x={x} dy={20}>{format(d, "MM/dd")}</tspan>
+                </text>
+              );
             }}
           />
 
