@@ -6,29 +6,67 @@ import { parseSquareOrderToTransactionData, updateInventoryFromOrder } from '@/l
 
 const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || '';
 const accessToken = process.env.SQUARE_ACCESS_TOKEN || '';
+const environment = process.env.SQUARE_ENV === "sandbox" ? Environment.Sandbox : Environment.Production;
+console.log('Square webhook using environment:', environment);
+const client = new Client({ accessToken, environment });
 
-const client = new Client({ accessToken, environment: Environment.Production });
+async function verifySignature(buf: Buffer, sigSha1?: string | null, sigSha256?: string | null) {
+  if (!signatureKey) {
+    console.warn('SQUARE_WEBHOOK_SIGNATURE_KEY is not set');
+    return false;
+  }
+  // Deterministic verification: Square (sandbox & modern subscriptions)
+  // signs the notification URL concatenated with the raw body using HMAC-SHA256.
+  // We'll build the same input and compare against the x-square-hmacsha256-signature
+  // header. For compatibility, fall back to HMAC-SHA1 against x-square-signature.
+  const notifUrl = (process.env.SQUARE_WEBHOOK_NOTIFICATION_URL || '').trim();
+  // Construct input: URL + body (if notifUrl is provided), otherwise just body.
+  const inputBuf = notifUrl ? Buffer.concat([Buffer.from(notifUrl, 'utf8'), buf]) : buf;
 
-async function verifySignature(rawBody: string, signatureHeader?: string) {
-  if (!signatureKey || !signatureHeader) return false;
-  // NOTE: Square's exact verification method may differ; consult Square webhook docs.
-  // This implementation uses HMAC-SHA1 over the raw body and compares base64 digest to header.
-  const hmac = crypto.createHmac('sha1', signatureKey).update(rawBody).digest('base64');
-  return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(signatureHeader));
+  if (sigSha256) {
+    try {
+      const hmac256 = crypto.createHmac('sha256', signatureKey).update(inputBuf).digest('base64');
+      const a = Buffer.from(hmac256, 'utf8');
+      const b = Buffer.from(sigSha256, 'utf8');
+      if (a.length === b.length && crypto.timingSafeEqual(a, b)) return true;
+    } catch (e) {
+      console.warn('Square webhook verification sha256 error', String(e));
+    }
+  }
+
+  if (sigSha1) {
+    try {
+      const hmac1 = crypto.createHmac('sha1', signatureKey).update(inputBuf).digest('base64');
+      const a1 = Buffer.from(hmac1, 'utf8');
+      const b1 = Buffer.from(sigSha1, 'utf8');
+      if (a1.length === b1.length && crypto.timingSafeEqual(a1, b1)) return true;
+    } catch (e) {
+      console.warn('Square webhook verification sha1 error', String(e));
+    }
+  }
+
+  return false;
 }
 
 export async function POST(req: Request) {
-  const rawBody = await req.text();
-  const signature = req.headers.get('x-square-signature') || req.headers.get('x-square-hmacsha256-signature') || undefined;
+  // Read raw bytes to ensure exact HMAC computation
+  const arrayBuf = await req.arrayBuffer();
+  const buf = Buffer.from(arrayBuf);
 
-  if (!await verifySignature(rawBody, signature)) {
+  const sigSha1 = req.headers.get('x-square-signature');
+  const sigSha256 = req.headers.get('x-square-hmacsha256-signature');
+
+  // NOTE: signature headers are read below; avoid noisy debug logs in production
+
+  if (!await verifySignature(buf, sigSha1, sigSha256)) {
     console.warn('Square webhook signature verification failed');
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
   let payload: any;
   try {
-    payload = JSON.parse(rawBody);
+    const raw = buf.toString('utf8');
+    payload = JSON.parse(raw);
   } catch (err) {
     console.error('Invalid JSON webhook payload', err);
     return NextResponse.json({ ok: false }, { status: 400 });
@@ -62,8 +100,23 @@ export async function POST(req: Request) {
 
       // If we have a payment id, fetch it and proceed
       if (paymentId) {
-        const paymentResp = await client.paymentsApi.getPayment(paymentId);
-        const payment = paymentResp.result.payment;
+        let payment: any = null;
+        try {
+          const paymentResp = await client.paymentsApi.getPayment(paymentId);
+          payment = paymentResp.result.payment;
+        } catch (e: any) {
+          const code = e?.statusCode || e?.status || null;
+          if (code === 404) {
+            console.info('Square webhook: payment not found (404), acknowledging', paymentId);
+            return NextResponse.json({ ok: true }, { status: 200 });
+          }
+          if (code === 401) {
+            console.warn('Square webhook: Square API unauthorized (401). Check SQUARE_ACCESS_TOKEN.');
+            return NextResponse.json({ ok: true }, { status: 200 });
+          }
+          console.error('Square webhook: error fetching payment', String(e));
+          return NextResponse.json({ ok: false }, { status: 500 });
+        }
 
         if (!payment) return NextResponse.json({ ok: true }, { status: 200 });
 
@@ -80,8 +133,22 @@ export async function POST(req: Request) {
         if (!orderId && payment.orderId) orderId = payment.orderId;
         let order: any = null;
         if (orderId) {
-          const orderResp = await client.ordersApi.retrieveOrder(orderId);
-          order = orderResp.result.order;
+          try {
+            const orderResp = await client.ordersApi.retrieveOrder(orderId);
+            order = orderResp.result.order;
+          } catch (e: any) {
+            const code = e?.statusCode || e?.status || null;
+            if (code === 404) {
+              console.info('Square webhook: order not found (404), continuing without order', orderId);
+              order = null;
+            } else if (code === 401) {
+              console.warn('Square webhook: Square API unauthorized (401) when retrieving order.');
+              return NextResponse.json({ ok: true }, { status: 200 });
+            } else {
+              console.error('Square webhook: error retrieving order', String(e));
+              return NextResponse.json({ ok: false }, { status: 500 });
+            }
+          }
         }
 
         // Parse order into transaction data (subtotal/total and a list of items)
