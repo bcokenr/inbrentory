@@ -9,10 +9,16 @@ const accessToken = process.env.SQUARE_ACCESS_TOKEN || '';
 const environment = process.env.SQUARE_ENV === "sandbox" ? Environment.Sandbox : Environment.Production;
 console.log('Square webhook using environment:', environment);
 const client = new Client({ accessToken, environment });
+const allowInsecure = (process.env.ALLOW_INSECURE_WEBHOOKS === 'true') && process.env.NODE_ENV !== 'production';
 
 async function verifySignature(buf: Buffer, sigSha1?: string | null, sigSha256?: string | null) {
   if (!signatureKey) {
     console.warn('SQUARE_WEBHOOK_SIGNATURE_KEY is not set');
+    // If explicitly allowed in dev, skip verification (useful for local testing)
+    if (allowInsecure) {
+      console.warn('ALLOW_INSECURE_WEBHOOKS=true: skipping signature verification (dev only)');
+      return true;
+    }
     return false;
   }
   // Deterministic verification: Square (sandbox & modern subscriptions)
@@ -81,7 +87,13 @@ export async function POST(req: Request) {
       const data = payload.data || payload; // some payloads wrap differently
 
       // If we have a checkout object in the event
-      const checkout = data.object?.checkout || data.object?.terminal_checkout || null;
+  const checkout = data.object?.checkout || data.object?.terminal_checkout || null;
+
+  // Dev-mode helpers: when ALLOW_INSECURE_WEBHOOKS=true and payload includes full payment/order
+  // use those instead of calling Square APIs. This enables local testing without making live
+  // Square API calls. This branch only activates when allowInsecure is true (NODE_ENV !== 'production').
+  const payloadPayment = data.object?.payment || data.object?.payment_data || null;
+  const payloadOrder = data.object?.order || data.object?.checkout?.order || null;
 
       let paymentId: string | undefined;
       let orderId: string | undefined;
@@ -101,21 +113,29 @@ export async function POST(req: Request) {
       // If we have a payment id, fetch it and proceed
       if (paymentId) {
         let payment: any = null;
-        try {
-          const paymentResp = await client.paymentsApi.getPayment(paymentId);
-          payment = paymentResp.result.payment;
-        } catch (e: any) {
-          const code = e?.statusCode || e?.status || null;
-          if (code === 404) {
-            console.info('Square webhook: payment not found (404), acknowledging', paymentId);
-            return NextResponse.json({ ok: true }, { status: 200 });
+
+        // Use payload-provided payment object if present and insecure dev mode is enabled
+        if (allowInsecure && payloadPayment) {
+          payment = payloadPayment;
+          // Ensure the id matches if provided
+          if (!payment.id) payment.id = paymentId;
+        } else {
+          try {
+            const paymentResp = await client.paymentsApi.getPayment(paymentId);
+            payment = paymentResp.result.payment;
+          } catch (e: any) {
+            const code = e?.statusCode || e?.status || null;
+            if (code === 404) {
+              console.info('Square webhook: payment not found (404), acknowledging', paymentId);
+              return NextResponse.json({ ok: true }, { status: 200 });
+            }
+            if (code === 401) {
+              console.warn('Square webhook: Square API unauthorized (401). Check SQUARE_ACCESS_TOKEN.');
+              return NextResponse.json({ ok: true }, { status: 200 });
+            }
+            console.error('Square webhook: error fetching payment', String(e));
+            return NextResponse.json({ ok: false }, { status: 500 });
           }
-          if (code === 401) {
-            console.warn('Square webhook: Square API unauthorized (401). Check SQUARE_ACCESS_TOKEN.');
-            return NextResponse.json({ ok: true }, { status: 200 });
-          }
-          console.error('Square webhook: error fetching payment', String(e));
-          return NextResponse.json({ ok: false }, { status: 500 });
         }
 
         if (!payment) return NextResponse.json({ ok: true }, { status: 200 });
@@ -132,7 +152,9 @@ export async function POST(req: Request) {
         // Retrieve order for line items and totals
         if (!orderId && payment.orderId) orderId = payment.orderId;
         let order: any = null;
-        if (orderId) {
+        if (allowInsecure && payloadOrder) {
+          order = payloadOrder;
+        } else if (orderId) {
           try {
             const orderResp = await client.ordersApi.retrieveOrder(orderId);
             order = orderResp.result.order;

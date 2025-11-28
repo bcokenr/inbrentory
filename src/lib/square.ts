@@ -8,13 +8,17 @@ import { zonedTimeToUtc } from 'date-fns-tz';
 
 const accessToken = process.env.SQUARE_ACCESS_TOKEN || '';
 const locationId = process.env.SQUARE_LOCATION_ID || '';
+const sqEnv = process.env.SQUARE_ENV === 'sandbox' ? Environment.Sandbox : Environment.Production;
 
 if (!accessToken) {
   // In real deployments, fail fast or log appropriately
   console.warn('SQUARE_ACCESS_TOKEN is not set. Square API calls will fail.');
 }
+if (!locationId) {
+  console.warn('SQUARE_LOCATION_ID is not set. Orders/checkouts may fail.');
+}
 
-const client = new Client({ accessToken, environment: Environment.Production });
+const client = new Client({ accessToken, environment: sqEnv });
 
 export type CartLineItem = {
   name: string;
@@ -55,26 +59,77 @@ export async function createSquareOrder(lineItems: CartLineItem[], storeCreditAm
     },
   };
 
-  const resp = await client.ordersApi.createOrder({ order: body.order, idempotencyKey });
-  return resp.result.order!;
+  try {
+    const resp = await client.ordersApi.createOrder({ order: body.order, idempotencyKey });
+    return resp.result.order!;
+  } catch (e: any) {
+    console.error('createSquareOrder error', e);
+    // Surface a clearer error message upstream
+    throw new Error(`Square createOrder failed: ${e?.statusCode || e?.status || e?.message || String(e)}`);
+  }
 }
 
-export async function createTerminalCheckout(orderId: string) {
+export async function createTerminalCheckout(orderOrId: string | any) {
   const idempotencyKey = uuidv4();
 
-  // Note: Terminal checkout requires a device or device options; this example uses a default
-  // TODO: Provide device options or device id depending on your fleet configuration.
+  // Determine order object: accept either an order object or an orderId string
+  let order: any = null;
+  if (typeof orderOrId === 'string') {
+    try {
+      const orderResp = await client.ordersApi.retrieveOrder(orderOrId);
+      order = orderResp.result.order;
+    } catch (e: any) {
+      console.error('createTerminalCheckout: failed to retrieve order', e);
+      throw new Error(`Failed to retrieve order ${orderOrId}: ${e?.statusCode || e?.status || e?.message || String(e)}`);
+    }
+  } else {
+    order = orderOrId;
+  }
+
+  if (!order) throw new Error('createTerminalCheckout: order is required');
+
+  // compute amountMoney (in cents) from order netAmounts or fallback to summing line items
+  let amountCents: number | null = null;
+  if (order.netAmounts && order.netAmounts.totalMoney && typeof order.netAmounts.totalMoney.amount === 'number') {
+    amountCents = order.netAmounts.totalMoney.amount;
+  } else if (Array.isArray(order.lineItems) && order.lineItems.length > 0) {
+    amountCents = 0;
+    for (const li of order.lineItems) {
+      const qty = Number(li.quantity ?? 1);
+      const price = Number(li.basePriceMoney?.amount ?? 0);
+      amountCents += qty * price;
+    }
+  }
+
+  if (amountCents === null) {
+    throw new Error('createTerminalCheckout: unable to determine order total amount');
+  }
+
+  const amountMoney = { amount: amountCents, currency: 'USD' };
+
+  // Device id must be provided via env for Terminal API.
+  const deviceId = process.env.SQUARE_TERMINAL_DEVICE_ID || '';
+  if (!deviceId) {
+    throw new Error('SQUARE_TERMINAL_DEVICE_ID is not set. Terminal checkout requires a device id.');
+  }
+
   const body: any = {
     idempotencyKey,
     checkout: {
-      orderId,
+      orderId: order.id,
       locationId,
-      // optionally set device options
+      amountMoney,
+      deviceOptions: { deviceId },
     },
   };
 
-  const resp = await client.terminalApi.createTerminalCheckout(body);
-  return resp.result.checkout!;
+  try {
+    const resp = await client.terminalApi.createTerminalCheckout(body);
+    return resp.result.checkout!;
+  } catch (e: any) {
+    console.error('createTerminalCheckout error', e);
+    throw new Error(`Square createTerminalCheckout failed: ${e?.statusCode || e?.status || e?.message || String(e)}`);
+  }
 }
 
 export async function parseSquareOrderToTransactionData(order: any) {
