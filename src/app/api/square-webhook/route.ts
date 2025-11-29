@@ -177,6 +177,10 @@ export async function POST(req: Request) {
         const txData = await parseSquareOrderToTransactionData(order ?? { lineItems: [] });
 
         // Create Transaction in Prisma
+        // Use the payment.created_at (if provided) as the canonical timestamp for the transaction
+        // so records reflect the actual payment time instead of server-local now().
+        const createdAt = payment?.createdAt ? new Date(payment.createdAt) : undefined;
+
         const tx = await prisma.transaction.create({
           data: {
             subtotal: txData.subtotal || 0,
@@ -187,8 +191,8 @@ export async function POST(req: Request) {
             paymentStatus: 'COMPLETED',
             storeCreditAmountApplied: txData.storeCreditAmountApplied || 0,
             receiptUrl: payment.receiptUrl || undefined,
+            createdAt: createdAt,
             // items will be linked later
-            // createdAt will default to now(); you may prefer payment.created_at
           },
         });
 

@@ -10,7 +10,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No itemIds provided' }, { status: 400 });
     }
 
-    const tx = await createTransaction(itemIds, storeCredit ? Number(storeCredit) : 0);
+  // Accept an optional createdAt timestamp (ISO string) to preserve canonical timestamps
+  const createdAt = body?.createdAt ? new Date(body.createdAt) : undefined;
+
+  const tx = await createTransaction(itemIds, storeCredit ? Number(storeCredit) : 0, createdAt);
     return NextResponse.json({ success: true, transactionId: tx.id });
   } catch (error) {
     console.error('Error processing transaction', error);

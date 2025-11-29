@@ -537,7 +537,7 @@ export async function markItemSold(
     revalidatePath(`/items/${itemId}`);
 }
 
-export async function createTransaction(itemIds: string[], storeCreditAmount?: number | null) {
+export async function createTransaction(itemIds: string[], storeCreditAmount?: number | null, createdAt?: Date | undefined) {
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
         throw new Error('No item IDs provided');
     }
@@ -561,6 +561,8 @@ export async function createTransaction(itemIds: string[], storeCreditAmount?: n
             subtotal: Number(totalBeforeCredit.toFixed(2)),
             total: finalTotal,
             storeCreditAmountApplied: credit || null,
+            // honor explicit createdAt when provided so callers can control canonical timestamps
+            createdAt: createdAt || undefined,
             items: {
                 connect: items.map((i: any) => ({ id: i.id })),
             },
@@ -628,7 +630,12 @@ export async function processTransaction(formData: FormData) {
     const ids = formData.getAll('itemIds').map((v) => String(v));
     const storeCredit = formData.get('storeCreditAmount') ?? formData.get('storeCredit') ?? null;
     const creditNum = storeCredit ? Number(storeCredit) : 0;
-    return await createTransaction(ids, creditNum);
+    // If the form supplies a saleDate, convert it to UTC using DEFAULT_TZ and pass it through
+    const saleDate = formData.get('saleDate')
+        ? zonedTimeToUtc(new Date(String(formData.get('saleDate')) + 'T00:00:00'), DEFAULT_TZ)
+        : undefined;
+
+    return await createTransaction(ids, creditNum, saleDate);
 }
 
 
