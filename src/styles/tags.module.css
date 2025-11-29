@@ -70,8 +70,8 @@
 
 @media print {
     .label {
-        border-left: none;
-        border-right: none;
+        border-top: none;
+        border-bottom: none;
     }
 
     /* Avoid any printing margins or page-scaling that could alter physical size.
