@@ -5,6 +5,7 @@ import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { deleteItemAction, deleteImage, markItemSold, deleteTransactionAction } from '@/lib/actions';
 import React, { useEffect, useRef, useState } from 'react';
+import { formatLocalDateTime } from '@/lib/utils';
 import styles from '@/styles/home.module.css';
 import { useRouter } from 'next/navigation';
 import { addToCart, getCart, removeFromCart } from '@/lib/cart';
@@ -300,7 +301,7 @@ export function MarkSoldButton({ itemId }: { itemId: string }) {
               <input
                 name="saleDate"
                 type="datetime-local"
-                defaultValue={new Date().toISOString().slice(0,16)}
+                defaultValue={formatLocalDateTime()}
                 className="border w-full"
               />
             </div>

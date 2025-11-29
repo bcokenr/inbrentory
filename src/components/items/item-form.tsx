@@ -7,6 +7,7 @@ import { Item, Category } from '@/lib/definitions';
 import { State } from '@/lib/actions';
 import { useEffect, useState } from "react";
 import styles from '@/styles/items.module.css';
+import { formatLocalDate } from '@/lib/utils';
 
 export default function ItemForm({ onSubmit, item, state }: { item?: Item | null, onSubmit: (formData: FormData) => void, state: State }) {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -167,8 +168,8 @@ export default function ItemForm({ onSubmit, item, state }: { item?: Item | null
                                 type="date"
                                 defaultValue={
                                     (item as any)?.transactionDate
-                                        ? new Date((item as any).transactionDate).toISOString().slice(0, 10)
-                                        : new Date().toISOString().slice(0, 10)
+                                        ? formatLocalDate(new Date((item as any).transactionDate))
+                                        : formatLocalDate()
                                 }
                                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-3 text-sm outline-2 placeholder:text-gray-500"
                             />
