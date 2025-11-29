@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { format } from 'date-fns';
 import styles from '@/styles/home.module.css';
 import type { TransactionWithItemsAndCategories } from '@/lib/definitions';
+import ClientToast from '@/components/ClientToast';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -20,6 +21,8 @@ export default async function Page({ params }: Props) {
 
   return (
     <main className={[styles.sometypeMono, 'space-y-6'].join(' ')}>
+      {/* Client-side toast listener to show any cross-page messages (e.g., payment success) */}
+      <ClientToast />
       <div className="flex items-center justify-between">
         <div>
           <Link href="/dashboard/transactions" className="text-sm text-blue-600 hover:underline">&larr; Back to transactions</Link>

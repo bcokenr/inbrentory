@@ -161,16 +161,33 @@ export default function CartPageClient() {
         } else {
           const body = await res.json();
           if (body?.status === 'COMPLETED') {
+            // Stop polling always
             if (pollingIdRef.current) clearInterval(pollingIdRef.current);
             setWaiting(false);
             setWaitingCheckoutId(null);
-            // success: clear client cart and show toast message (do not navigate)
-            clearCart();
-            setCart([]);
-            setMessage('Payment completed');
-            setMessageVariant('success');
-            // auto-dismiss toast after 5s
-            setTimeout(() => { setMessage(null); setMessageVariant(null); }, 5000);
+
+            // If our server created a transaction and returned its id, redirect to it
+            const transactionId = body?.transactionId;
+            if (transactionId) {
+              // Persist a cross-page toast via localStorage so the transaction page can show it
+              try {
+                localStorage.setItem('inbrentory:message', JSON.stringify({ message: 'Payment successful', variant: 'success' }));
+              } catch (e) {
+                // ignore localStorage failures
+              }
+              // clear client cart and navigate to the transaction detail
+              clearCart();
+              setCart([]);
+              try { router.push(`/dashboard/transactions/${transactionId}`); } catch (e) { /* ignore */ }
+              return;
+            }
+
+            // Payment succeeded in Square but we did not create a corresponding transaction in our DB
+            // Stay on the cart page and inform the user so they can manually update items
+            setMessage('Payment successful. However, items were not successfully marked as sold. Update them manually in the items list view');
+            setMessageVariant('error');
+            // auto-dismiss toast after 8s
+            setTimeout(() => { setMessage(null); setMessageVariant(null); }, 8000);
             return;
           }
         }

@@ -207,20 +207,10 @@ export async function POST(req: Request) {
               where: { id: item.id },
               data: {
                 transactionId: tx.id,
-                transactionPrice: (li.basePriceMoney?.amount ?? 0) / 100,
                 transactionDate: payment.createdAt ? new Date(payment.createdAt) : undefined,
-                soldOnDepop: true,
+                soldOnDepop: false,
               },
             });
-          }
-        }
-
-        // Decrement inventory quantities where applicable
-        if (order) {
-          try {
-            await updateInventoryFromOrder(order);
-          } catch (e) {
-            console.warn('Failed to update inventory from order', e);
           }
         }
 
