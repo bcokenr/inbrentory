@@ -5,6 +5,9 @@
     display: flex;
     align-items: end;
     justify-content: center;
+    border-bottom: 1px solid;
+    padding-bottom: 24px;
+    margin-bottom: -24px;
 }
 
 .name {
@@ -13,6 +16,9 @@
     padding: 0 16px;
     text-align: start;
     font-weight: 600;
+    border-top: 1px solid black;
+    padding-top: 24px;
+    margin-top: -24px;
 
     /* limit to 3 lines */
     display: -webkit-box;
@@ -70,8 +76,7 @@
 
 @media print {
     .label {
-        border-top: none;
-        border-bottom: none;
+        border: none;
     }
 
     /* Avoid any printing margins or page-scaling that could alter physical size.
