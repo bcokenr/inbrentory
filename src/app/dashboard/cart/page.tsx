@@ -236,8 +236,7 @@ export default function CartPageClient() {
     try {
       // Use BarcodeDetector if available
       if ((window as any).BarcodeDetector) {
-        // Request camera access (prefer user camera) and request higher resolution
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } } });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } });
         streamRef.current = stream;
         if (videoRef.current) {
           // ensure autoplay will be allowed: mute the element
@@ -282,9 +281,7 @@ export default function CartPageClient() {
           readerRef.current = reader;
           setDecoderUsed('ZXing');
           try {
-            // Request a user-facing stream and decode from the running video element so
-            // browsers (including iPad Safari) are more likely to use the front camera.
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } } });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } });
             streamRef.current = stream;
             if (videoRef.current) {
               try { videoRef.current.muted = true; } catch { }
