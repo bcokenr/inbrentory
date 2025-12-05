@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Breadcrumbs from '@/components/breadcrumbs';
 import type { Item } from '@/lib/definitions';
 import styles from '@/styles/items.module.css';
-import { DeleteItem, UpdateItem, MarkSoldButton } from '@/components/button';
+import { DeleteItem, UpdateItem } from '@/components/button';
 import ImageUpload from '@/components/items/image-upload';
 import { DeleteImageButton } from '@/components/button';
 
@@ -43,7 +43,7 @@ function ItemDetails({ item }: { item: Item }) {
             >
                 {!item.transaction && !item.transactionDate && (
                     <div className="flex gap-2 mr-4">
-                        <MarkSoldButton itemId={item.id} />
+                        {/* <MarkSoldButton itemId={item.id} /> */}
                         {/* <AddToCartButton item={item} /> */}
                     </div>
                 )}
