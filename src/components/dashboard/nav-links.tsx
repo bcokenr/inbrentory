@@ -32,11 +32,11 @@ const links = [
     href: '/dashboard/transactions',
     icon: ReceiptPercentIcon,
   },
-  {
-    name: 'Cart',
-    href: '/dashboard/cart',
-    icon: ShoppingCartIcon,
-  }
+  // {
+  //   name: 'Cart',
+  //   href: '/dashboard/cart',
+  //   icon: ShoppingCartIcon,
+  // }
 ];
 
 export default function NavLinks() {
