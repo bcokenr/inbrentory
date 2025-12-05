@@ -23,7 +23,7 @@ export default function ItemForm({ onSubmit, item, state }: { item?: Item | null
 
     return (
         <form action={onSubmit}>
-            <div className={[styles.sometypeMono, "rounded-md bg-gray-50 p-4 md:p-6"].join(" ")}>
+            <div className={[styles.sometypeMono, "rounded-md bg-gray-50 p-4 md:p-6 pb-24 md:pb-0"].join(" ")}>
                 {/* Item name */}
                 <div className="mb-4">
                     <label htmlFor="name" className="mb-2 block text-sm font-medium">
@@ -312,14 +312,16 @@ export default function ItemForm({ onSubmit, item, state }: { item?: Item | null
                 </div>
 
             </div>
-            <div className={[styles.sometypeMono, "mt-6 flex justify-end gap-4"].join(" ")}>
-                <Link
-                    href={item ? `/dashboard/items/${item.id}` : "/dashboard/items"}
-                    className="flex h-10 items-center rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
-                >
-                    Cancel
-                </Link>
-                <Button type="submit">{item ? 'Update Item' : 'Create Item'}</Button>
+            <div className={[styles.sometypeMono, "fixed bottom-0 left-0 right-0 z-50 bg-white p-4 border-t lg:static lg:mt-6 lg:flex lg:justify-end lg:gap-4"].join(" ")}>
+                <div className="max-w-4xl mx-auto flex justify-end gap-4">
+                    <Link
+                        href={item ? `/dashboard/items/${item.id}` : "/dashboard/items"}
+                        className="flex h-10 items-center rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
+                    >
+                        Cancel
+                    </Link>
+                    <Button type="submit">{item ? 'Update Item' : 'Create Item'}</Button>
+                </div>
             </div>
         </form>
     );
