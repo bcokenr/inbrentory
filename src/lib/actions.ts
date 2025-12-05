@@ -308,6 +308,7 @@ export async function createItem(prevState: State, formData: FormData) {
             transactionDate: validatedFormData.data.transactionPrice ? normalizedData.transactionDate : null,
             onDepop: normalizedData.onDepop,
             soldOnDepop: normalizedData.soldOnDepop,
+            hasPrintedTag: !!validatedFormData.data.transactionPrice,
             ...(existingCategory
                 ? {
                     categories: {
@@ -381,7 +382,7 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
     }
 
     // Fetch existing item to determine whether it already has a linked transaction
-    const existingItem = await prisma.item.findUnique({ where: { id }, select: { transactionId: true } });
+    const existingItem = await prisma.item.findUnique({ where: { id }, select: { transactionId: true, hasPrintedTag: true } });
 
     await prisma.item.update({
         where: { id },
@@ -399,6 +400,7 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
             transactionDate: normalizedData.transactionDate,
             onDepop: normalizedData.onDepop,
             soldOnDepop: normalizedData.soldOnDepop,
+            hasPrintedTag: existingItem?.hasPrintedTag || !!validatedFormData.data.transactionPrice,
             ...(existingCategory
                 ? {
                     // replace existing relations with the new category
@@ -592,6 +594,7 @@ export async function createItemForCart(data: { name: string; listPrice: number;
             name: String(name),
             listPrice: normalizedPrice,
             onDepop: Boolean(onDepop || false),
+            hasPrintedTag: true,
             ...(existingCategory
                 ? { categories: { connect: { id: existingCategory.id } } }
                 : {}),
